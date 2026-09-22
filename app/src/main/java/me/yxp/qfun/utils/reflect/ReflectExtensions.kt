@@ -2,6 +2,7 @@ package me.yxp.qfun.utils.reflect
 
 import me.yxp.qfun.loader.hookapi.HookEngineManager
 import java.lang.reflect.Member
+import java.lang.reflect.Method
 
 val Any.TAG: String
     get() = this.javaClass.simpleName
@@ -129,6 +130,41 @@ val Class<*>.instance: Any?
         type = this@instance
         isStatic = true
     }.get(null)
+
+fun Any.getQzFieldDeepOrNull(name: String): Any? {
+    var clazz: Class<*>? = this.javaClass
+    while (clazz != null) {
+        val field = runCatching { clazz.getDeclaredField(name) }.getOrNull()
+        if (field != null) {
+            field.isAccessible = true
+            return runCatching { field.get(this) }.getOrNull()
+        }
+        clazz = clazz.superclass
+    }
+    return null
+}
+
+fun Any.setQzFieldDeep(name: String, value: Any?): Boolean {
+    var clazz: Class<*>? = this.javaClass
+    while (clazz != null) {
+        val field = runCatching { clazz.getDeclaredField(name) }.getOrNull()
+        if (field != null) {
+            field.isAccessible = true
+            return runCatching { field.set(this, value) }.isSuccess
+        }
+        clazz = clazz.superclass
+    }
+    return false
+}
+
+fun Class<*>.findQzMethodDeepOrNull(block: MethodSearcher.() -> Unit): Method? {
+    var clazz: Class<*>? = this
+    while (clazz != null) {
+        clazz.findMethodOrNull(block)?.let { return it }
+        clazz = clazz.superclass
+    }
+    return null
+}
 
 private val primitiveWrapperMap = mapOf(
     Int::class.java to Int::class.javaObjectType,
