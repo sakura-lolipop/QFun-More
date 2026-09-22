@@ -1,0 +1,41 @@
+package me.yxp.qfun.hook.chat
+
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import me.yxp.qfun.annotation.HookCategory
+import me.yxp.qfun.annotation.HookItemAnnotation
+import me.yxp.qfun.hook.api.MenuClickListener
+import me.yxp.qfun.hook.api.OnGetRKey
+import me.yxp.qfun.hook.base.BaseSwitchHookItem
+import me.yxp.qfun.plugin.bean.MsgData
+import me.yxp.qfun.utils.qq.HostInfo
+import me.yxp.qfun.utils.qq.Toasts
+
+@HookItemAnnotation(
+    "复制图片链接",
+    "图片消息长按菜单出现复制图链项，复制后可直接下载或打开",
+    HookCategory.CHAT
+)
+object CopyPicLink : BaseSwitchHookItem(), MenuClickListener {
+
+    override val menuKey: String get() = "[QFun],$name,复制图链,,2,9"
+
+    override fun onClick(msgData: MsgData) {
+
+        val rkey = if (msgData.type == 1) OnGetRKey.friendRkey else OnGetRKey.groupRkey
+
+        val links = msgData.data.elements
+            .mapNotNull { it.picElement }
+            .mapNotNull { it.originImageUrl }
+            .map { "https://multimedia.nt.qq.com.cn$it$rkey" }
+        if (links.isEmpty()) return
+
+        val text = links.joinToString("\n")
+
+        val cm = HostInfo.hostContext.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        cm.setPrimaryClip(ClipData.newPlainText(null, text))
+
+        Toasts.toast("已复制到剪切板:$text")
+    }
+}
