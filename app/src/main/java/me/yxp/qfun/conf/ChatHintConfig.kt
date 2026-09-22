@@ -4,5 +4,5 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class ChatHintConfig(
-    val hintText: String = "Hello World."
+    val hintText: String = "在这里输入你想说的内容"
 )

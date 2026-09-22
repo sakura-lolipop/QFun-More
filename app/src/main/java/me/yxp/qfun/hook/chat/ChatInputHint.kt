@@ -54,7 +54,7 @@ object ChatInputHint : BaseClickableHookItem<ChatHintConfig>(ChatHintConfig.seri
                     value = hintText,
                     onValueChange = { hintText = it },
                     label = "提示文字",
-                    hint = "默认: Hello World."
+                    hint = "默认: 在这里输入你想说的内容"
                 )
             }
         }.show()
