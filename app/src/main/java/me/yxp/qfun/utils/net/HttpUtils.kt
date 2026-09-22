@@ -49,6 +49,18 @@ object HttpUtils {
             runCatching { doRequest(urlString, "POST", body, headers) }.getOrDefault("")
         }
 
+    suspend fun postFormSuspend(
+        urlString: String,
+        params: Map<String, String>,
+        headers: Map<String, String>
+    ): String = withContext(Dispatchers.IO) {
+        val body = params.entries.joinToString("&") {
+            "${URLEncoder.encode(it.key, "UTF-8")}=${URLEncoder.encode(it.value, "UTF-8")}"
+        }
+        val allHeaders = headers + mapOf("Content-Type" to "application/x-www-form-urlencoded")
+        runCatching { doRequest(urlString, "POST", body, allHeaders) }.getOrDefault("")
+    }
+
     suspend fun downloadSuspend(urlString: String, savePath: String): Boolean =
         withContext(Dispatchers.IO) {
             downloadSync(urlString, savePath)
@@ -88,6 +100,18 @@ object HttpUtils {
         }
         val headers = mapOf("Content-Type" to "application/x-www-form-urlencoded")
         return postSync(urlString, body, headers)
+    }
+
+    fun postFormSync(
+        urlString: String,
+        params: Map<String, String>,
+        headers: Map<String, String>
+    ): String {
+        val body = params.entries.joinToString("&") {
+            "${URLEncoder.encode(it.key, "UTF-8")}=${URLEncoder.encode(it.value, "UTF-8")}"
+        }
+        val allHeaders = headers + mapOf("Content-Type" to "application/x-www-form-urlencoded")
+        return postSync(urlString, body, allHeaders)
     }
 
     fun downloadSync(urlString: String, savePath: String): Boolean {
