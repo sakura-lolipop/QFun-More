@@ -21,11 +21,11 @@ object HideContactCard : BaseSwitchHookItem() {
     override fun onInit() = HostInfo.isQQ && CONTACT_GUIDE_BUILDER.clazz != null
 
     override fun onHook() {
-        // QStory: hook 构建通讯录推荐卡片的 h(int) 方法
+        // QQ 9.3.15 实测签名：h(I, Landroid/view/View;)Landroid/view/View;（老版为 h(int)，已按实证放宽）
         CONTACT_GUIDE_BUILDER.clazz
             ?.findMethod {
                 name = "h"
-                paramTypes(int)
+                paramCount = 2
             }
             ?.doNothing(this)
     }
