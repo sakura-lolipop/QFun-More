@@ -235,10 +235,13 @@ object QzoneTabDirect : BaseSwitchHookItem() {
             val strip = card.findViewById<View>(BOTTOM_AREA_ID)
             LogUtils.e("QzoneTabDirect.clear", IllegalStateException("strip=${strip != null} cardY=${card.height}"))
             val found = strip ?: return
-            val threshold = (found.width * 95) / 100
             fun clear(v: View) {
-                val isWide = v.width >= threshold
-                if (isWide && v !== found && v.background != null) v.background = null
+                if (v.background != null) v.background = null
+                val lp = v.layoutParams as? ViewGroup.MarginLayoutParams
+                if (lp != null && (lp.topMargin != 0 || lp.bottomMargin != 0)) {
+                    lp.topMargin = 0
+                    lp.bottomMargin = 0
+                }
                 if (v is ViewGroup) for (i in 0 until v.childCount) clear(v.getChildAt(i))
             }
             clear(found)
@@ -246,7 +249,6 @@ object QzoneTabDirect : BaseSwitchHookItem() {
             if (lp != null && (lp.topMargin != 0 || lp.bottomMargin != 0)) {
                 lp.topMargin = 0
                 lp.bottomMargin = 0
-                card.layoutParams = lp
             }
         }
     }
