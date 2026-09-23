@@ -1,6 +1,10 @@
 package me.yxp.qfun.hook.social
 
 import android.content.Context
+import android.graphics.Rect
+import android.view.View
+import android.view.ViewGroup
+import android.view.ViewParent
 import me.yxp.qfun.annotation.HookCategory
 import me.yxp.qfun.annotation.HookItemAnnotation
 import me.yxp.qfun.hook.base.BaseSwitchHookItem
@@ -8,6 +12,7 @@ import me.yxp.qfun.utils.hook.hookAfter
 import me.yxp.qfun.utils.hook.hookBefore
 import me.yxp.qfun.utils.log.LogUtils
 import me.yxp.qfun.utils.qq.HostInfo
+import me.yxp.qfun.utils.qq.QQCurrentEnv
 import me.yxp.qfun.utils.reflect.clazz
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
@@ -63,6 +68,8 @@ object QzoneTabDirect : BaseSwitchHookItem() {
 
     private const val KEY_QZONE = "QZONE"
     private const val KEY_LEBA = "LEBA"
+    private const val FEED_ITEM_BASE = "com.qzone.reborn.feedx.itemview.QZoneBaseFeedItemView"
+    private const val BOTTOM_AREA_ID = 0x7f0a6619
 
     /** 主路：门面静态方法（reborn UI 运行时判断全部走这里）。 */
     private var facadeMethod: Method? = null
@@ -125,7 +132,11 @@ object QzoneTabDirect : BaseSwitchHookItem() {
         //    （标题栏/设置/路由/广告）全部进入原生 QZONE frame 模式
         facadeMethod?.hookBefore(this) { param -> param.result = true }
         // 2) 兜底：QRoute 直连 impl 的调用方
-        implGateMethod?.hookBefore(this) { param -> param.result = true }
+        implGateMethod?.hookBefore(this) { param ->
+            param.result = true
+            armFeedHooks()
+            if (facadeCalls++ % 20 == 0) dumpViewTreeWithBgOnce()
+        }
         // 3) 时序兜底：闸门首次消费早于 hook 安装时，后续重建仍强制槽内挂 QzoneFrame
         checkBusinessSwitch?.hookAfter(this) { param ->
             val state = param.args.firstOrNull() ?: return@hookAfter
@@ -162,5 +173,113 @@ object QzoneTabDirect : BaseSwitchHookItem() {
                     })
                 }
             }
+        // TEMP-DEBUG: 空间页渲染时自动 dump（含背景 drawable 类型 + margin），仅成功写入一次
+        facadeMethod?.hookAfter(this) { param ->
+            if (facadeCalls++ % 20 == 0) dumpViewTreeWithBgOnce()
+            armFeedHooks()
+        }
+        // 灰带2根治：底部区（快捷评论条）的 QUI 语义填充底色遮挡页面皮肤。
+        // 每次绑定（含复用）后清空该子树全部背景 → 网格皮肤透出，布局零改动零闪现。
+        FEED_ITEM_BASE.clazz?.declaredMethods
+            ?.filter { it.name == "bindData" || it.name == "c0" }
+            ?.forEach { m ->
+                m.hookAfter(this) { param ->
+                    (param.thisObject as? View)?.let(::clearBottomAreaSkinBlocker)
+                }
+            }
+    }
+
+    private var feedHooksArmed = false
+
+    /** 懒挂载：qzone 类在空间页首次打开后才可加载，此时再挂 bind/装饰器钩子。 */
+    private fun armFeedHooks() {
+        if (feedHooksArmed) return
+        // facade 类加载晚：此处补注册门面钩子（若此刻仍不可加载，下次调用重试）
+        if (facadeMethod == null) {
+            val f = QZONE_API_PROXY_FACADE.clazz?.declaredMethods?.firstOrNull {
+                it.name == "needShowQzoneFrame" && it.parameterCount == 2 &&
+                    Context::class.java.isAssignableFrom(it.parameterTypes[0])
+            }
+            f?.let {
+                facadeMethod = it
+                it.hookBefore(this) { p -> p.result = true }
+            }
+        }
+        val ms = FEED_ITEM_BASE.clazz?.declaredMethods ?: run {
+            LogUtils.e("QzoneTabDirect.arm", IllegalStateException("FEED_ITEM_BASE 仍不可加载"))
+            return
+        }
+        LogUtils.e("QzoneTabDirect.arm", IllegalStateException("FEED_ITEM_BASE.clazz=${FEED_ITEM_BASE.clazz != null} methods=${ms?.size}"))
+        ms.filter { it.name == "bindData" || it.name == "c0" }.forEach { m ->
+            m.hookAfter(this) { param ->
+                (param.thisObject as? View)?.let(::clearBottomAreaSkinBlocker)
+            }
+        }
+        listOf(
+            "com.qzone.reborn.feedx.widget.picmixvideo.j\$a",
+            "com.qzone.reborn.feedx.util.v\$a",
+        ).forEach { decoName ->
+            decoName.clazz?.declaredMethods?.firstOrNull { it.name == "getItemOffsets" }?.let {
+                it.hookAfter(this) { param ->
+                    (param.args.firstOrNull() as? Rect)?.set(0, 0, 0, 0)
+                }
+            }
+        }
+        feedHooksArmed = true
+        LogUtils.e("QzoneTabDirect.arm", IllegalStateException("armed, hooked=${ms.count { it.name == "bindData" || it.name == "c0" }}"))
+    }
+
+    /** 清空底部区子树里"全宽视图"的背景（保住内缩的输入框圆角底），让皮肤透出。 */
+    private fun clearBottomAreaSkinBlocker(card: View) {
+        runCatching {
+            val strip = card.findViewById<View>(BOTTOM_AREA_ID)
+            LogUtils.e("QzoneTabDirect.clear", IllegalStateException("strip=${strip != null} cardY=${card.height}"))
+            val found = strip ?: return
+            val threshold = (found.width * 95) / 100
+            fun clear(v: View) {
+                val isWide = v.width >= threshold
+                if (isWide && v !== found && v.background != null) v.background = null
+                if (v is ViewGroup) for (i in 0 until v.childCount) clear(v.getChildAt(i))
+            }
+            clear(found)
+            val lp = card.layoutParams as? ViewGroup.MarginLayoutParams
+            if (lp != null && (lp.topMargin != 0 || lp.bottomMargin != 0)) {
+                lp.topMargin = 0
+                lp.bottomMargin = 0
+                card.layoutParams = lp
+            }
+        }
+    }
+
+    private var facadeCalls = 0
+    private var headerHookArmed = false
+    private val bgDumped = java.util.concurrent.atomic.AtomicBoolean(false)
+
+    /** 打印 类名/坐标/尺寸/背景drawable类型/margin。仅当空间页在场时写入，否则留待下次触发。 */
+    private fun dumpViewTreeWithBgOnce() {
+        if (!bgDumped.compareAndSet(false, true)) return
+        runCatching {
+            val activity = QQCurrentEnv.activity ?: return
+            val out = StringBuilder()
+            fun walk(v: View, depth: Int) {
+                val loc = IntArray(2)
+                v.getLocationOnScreen(loc)
+                val bg = v.background?.javaClass?.simpleName ?: "-"
+                val lp = v.layoutParams as? ViewGroup.MarginLayoutParams
+                val mg = if (lp != null) "mT=${lp.topMargin},mB=${lp.bottomMargin},h=${lp.height}" else "mX"
+                out.append("  ".repeat(depth)).append(v.javaClass.name)
+                    .append(" @").append(loc[0]).append(',').append(loc[1])
+                    .append(' ').append(v.width).append('x').append(v.height)
+                    .append(" bg=").append(bg).append(' ').append(mg)
+                    .append('\n')
+                if (v is ViewGroup) for (i in 0 until v.childCount) walk(v.getChildAt(i), depth + 1)
+            }
+            walk(activity.window.decorView, 0)
+            if (!out.contains("QzoneConciseHeaderView")) {
+                bgDumped.set(false)  // 当前不在空间页：不消耗机会，下次渲染重试
+                return
+            }
+            java.io.File(HostInfo.hostContext.filesDir, "qfun_bg_dump.txt").writeText(out.toString())
+        }
     }
 }
