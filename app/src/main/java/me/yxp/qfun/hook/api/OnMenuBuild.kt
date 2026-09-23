@@ -51,11 +51,15 @@ object OnMenuBuild : BaseApiHookItem<MenuClickListener>(), DexKitTask {
                 val msgRecord = aioMsgItem.msgRecord
                 val msgType = msgRecord.msgType.toString()
 
+                // 先清除历史遗留的模块菜单项：items 列表跨长按复用，
+                // 上一条消息适用的菜单项不清除就会出现在所有消息类型上
+                items.removeAll { item ->
+                    runCatching {
+                        item.getObjectByType<String>(itemSuperClass)?.startsWith(PREFIX) == true
+                    }.getOrElse { false }
+                }
 
-               forEachChecked { listener ->
-
-                    if (items.any { isModuleItem(it, listener.menuKey) }) return@forEachChecked
-
+                forEachChecked { listener ->
                     val args = listener.menuKey.split(",")
                     if (args.size < 5) return@forEachChecked
 
@@ -132,13 +136,6 @@ object OnMenuBuild : BaseApiHookItem<MenuClickListener>(), DexKitTask {
             }
         }
         return layout
-    }
-
-    private fun isModuleItem(item: Any, key: String): Boolean {
-        return runCatching {
-            val label = item.getObjectByType<String>()
-            label == key
-        }.getOrElse { false }
     }
 
     override fun getQueryMap(): Map<String, BaseMatcher> = mapOf(

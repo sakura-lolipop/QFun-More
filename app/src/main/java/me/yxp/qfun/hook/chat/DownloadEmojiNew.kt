@@ -6,14 +6,12 @@ import me.yxp.qfun.annotation.HookCategory
 import me.yxp.qfun.annotation.HookItemAnnotation
 import me.yxp.qfun.common.ModuleScope
 import me.yxp.qfun.hook.api.MenuClickListener
-import me.yxp.qfun.hook.api.OnGetRKey
 import me.yxp.qfun.hook.base.BaseSwitchHookItem
 import me.yxp.qfun.plugin.bean.MsgData
 import me.yxp.qfun.utils.net.HttpUtils
 import me.yxp.qfun.utils.qq.HostInfo
 import me.yxp.qfun.utils.qq.Toasts
 import java.io.File
-import java.util.Locale
 
 @HookItemAnnotation(
     "表情可下载(新版)",
@@ -26,12 +24,8 @@ object DownloadEmojiNew : BaseSwitchHookItem(), MenuClickListener {
 
     override fun onClick(msgData: MsgData) {
 
-        val pics = msgData.data.elements
-            .mapNotNull { it.picElement }
-            .filter { !it.md5HexStr.isNullOrEmpty() && !it.originImageUrl.isNullOrEmpty() }
+        val pics = ChatMediaHelper.picPairs(msgData)
         if (pics.isEmpty()) return
-
-        val rkey = if (msgData.type == 1) OnGetRKey.friendRkey else OnGetRKey.groupRkey
 
         ModuleScope.launchIO(name) {
             val dir = File(
@@ -41,9 +35,7 @@ object DownloadEmojiNew : BaseSwitchHookItem(), MenuClickListener {
             dir.mkdirs()
 
             var success = true
-            pics.forEach { pic ->
-                val md5 = pic.md5HexStr.uppercase(Locale.getDefault())
-                val url = "https://multimedia.nt.qq.com.cn${pic.originImageUrl}$rkey"
+            pics.forEach { (md5, url) ->
                 val out = File(dir, "$md5.png")
                 if (out.exists()) out.delete()
 

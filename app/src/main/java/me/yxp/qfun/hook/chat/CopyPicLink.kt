@@ -6,7 +6,6 @@ import android.content.Context
 import me.yxp.qfun.annotation.HookCategory
 import me.yxp.qfun.annotation.HookItemAnnotation
 import me.yxp.qfun.hook.api.MenuClickListener
-import me.yxp.qfun.hook.api.OnGetRKey
 import me.yxp.qfun.hook.base.BaseSwitchHookItem
 import me.yxp.qfun.plugin.bean.MsgData
 import me.yxp.qfun.utils.qq.HostInfo
@@ -23,12 +22,7 @@ object CopyPicLink : BaseSwitchHookItem(), MenuClickListener {
 
     override fun onClick(msgData: MsgData) {
 
-        val rkey = if (msgData.type == 1) OnGetRKey.friendRkey else OnGetRKey.groupRkey
-
-        val links = msgData.data.elements
-            .mapNotNull { it.picElement }
-            .mapNotNull { it.originImageUrl }
-            .map { "https://multimedia.nt.qq.com.cn$it$rkey" }
+        val links = ChatMediaHelper.picPairs(msgData).map { it.second }
         if (links.isEmpty()) return
 
         val text = links.joinToString("\n")
