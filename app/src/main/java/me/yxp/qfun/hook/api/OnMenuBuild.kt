@@ -50,7 +50,7 @@ object OnMenuBuild : BaseApiHookItem<MenuClickListener>(), DexKitTask {
                 val aioMsgItem = items[0].getObjectByType<AIOMsgItem>(itemSuperClass)
                 val msgRecord = aioMsgItem.msgRecord
                 val msgType = msgRecord.msgType.toString()
-
+                val msgData = MsgData(msgRecord)
 
                forEachChecked { listener ->
 
@@ -63,6 +63,10 @@ object OnMenuBuild : BaseApiHookItem<MenuClickListener>(), DexKitTask {
                     if (targetTypes.isNotEmpty() && !targetTypes.contains(msgType)) {
                         return@forEachChecked
                     }
+
+                    // msgType 一个数字区分不了文本类内部的纯文本/表情（同为 2），
+                    // 功能需要按消息元素自判（QStory 同款做法：查 elements 判空）
+                    if (!listener.accept(msgData)) return@forEachChecked
 
                     addMenuItem(items, itemClass, listener.menuKey, aioMsgItem)
                 }
@@ -155,4 +159,10 @@ object OnMenuBuild : BaseApiHookItem<MenuClickListener>(), DexKitTask {
 interface MenuClickListener : Listener {
     val menuKey: String
     fun onClick(msgData: MsgData)
+
+    /**
+     * msgType 白名单之外的精过滤：文本/表情/图文混排同属 msgType=2，
+     * 数字白名单区分不了，功能按消息元素自判能否处理，默认显示。
+     */
+    fun accept(msgData: MsgData): Boolean = true
 }

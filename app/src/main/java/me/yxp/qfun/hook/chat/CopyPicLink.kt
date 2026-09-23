@@ -18,7 +18,10 @@ import me.yxp.qfun.utils.qq.Toasts
 )
 object CopyPicLink : BaseSwitchHookItem(), MenuClickListener {
 
-    override val menuKey: String get() = "[QFun],$name,复制图链,,2,9"
+    override val menuKey: String get() = "[QFun],$name,复制图链,,"
+
+    override fun accept(msgData: MsgData): Boolean =
+        msgData.data.elements.any { it.picElement != null }
 
     override fun onClick(msgData: MsgData) {
 

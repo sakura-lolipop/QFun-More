@@ -20,7 +20,10 @@ import java.io.File
 )
 object DownloadEmojiNew : BaseSwitchHookItem(), MenuClickListener {
 
-    override val menuKey: String get() = "[QFun],$name,保存表情,,2,9"
+    override val menuKey: String get() = "[QFun],$name,保存表情,,"
+
+    override fun accept(msgData: MsgData): Boolean =
+        msgData.data.elements.any { it.picElement != null }
 
     override fun onClick(msgData: MsgData) {
 

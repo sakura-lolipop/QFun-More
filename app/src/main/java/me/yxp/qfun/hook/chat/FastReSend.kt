@@ -33,7 +33,10 @@ object FastReSend : BaseSwitchHookItem(), MenuClickListener {
 
     private var delegate: Any? = null
 
-    override val menuKey: String = "[QFun],$name,撤回重发,,2,9"
+    override val menuKey: String = "[QFun],$name,撤回重发,,"
+
+    override fun accept(msgData: MsgData): Boolean =
+        msgData.data.elements.any { it.picElement != null }
 
     override fun onClick(msgData: MsgData) {
 
