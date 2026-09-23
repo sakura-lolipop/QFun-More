@@ -33,11 +33,6 @@ object OnMenuBuild : BaseApiHookItem<MenuClickListener>(), DexKitTask {
 
     private const val MENU_TYPE = "CopyMenuItem"
 
-    // 模块自己创建过的菜单项，按对象身份登记（弱引用防泄漏）。
-    // 清理遗留项必须用它：CopyMenuItem 的 menuKey 字段声明在子类，
-    // 按父类反射读 String 读不到，旧方案 removeAll 因此从未生效
-    private val trackedItems = java.util.WeakHashMap<Any, Boolean>()
-
     override fun loadHook() {
 
         val itemClass = requireClass(MENU_TYPE)
@@ -56,11 +51,11 @@ object OnMenuBuild : BaseApiHookItem<MenuClickListener>(), DexKitTask {
                 val msgRecord = aioMsgItem.msgRecord
                 val msgType = msgRecord.msgType.toString()
 
-                // 先清除历史遗留的模块菜单项：items 列表跨长按复用，
-                // 上一条消息适用的菜单项不清除就会出现在所有消息类型上
-                items.removeAll { item -> trackedItems.remove(item) == true }
 
-                forEachChecked { listener ->
+               forEachChecked { listener ->
+
+                    if (items.any { isModuleItem(it, listener.menuKey) }) return@forEachChecked
+
                     val args = listener.menuKey.split(",")
                     if (args.size < 5) return@forEachChecked
 
@@ -108,7 +103,6 @@ object OnMenuBuild : BaseApiHookItem<MenuClickListener>(), DexKitTask {
         val context = QQCurrentEnv.activity ?: QQCurrentEnv.qQAppInterface.application
         val newItem = itemClass.newInstanceWithArgs(context, aioMsgItem)
         newItem.setObjectByType(key)
-        trackedItems[newItem] = true
         items.add(0, newItem)
     }
 
@@ -138,6 +132,13 @@ object OnMenuBuild : BaseApiHookItem<MenuClickListener>(), DexKitTask {
             }
         }
         return layout
+    }
+
+    private fun isModuleItem(item: Any, key: String): Boolean {
+        return runCatching {
+            val label = item.getObjectByType<String>()
+            label == key
+        }.getOrElse { false }
     }
 
     override fun getQueryMap(): Map<String, BaseMatcher> = mapOf(
