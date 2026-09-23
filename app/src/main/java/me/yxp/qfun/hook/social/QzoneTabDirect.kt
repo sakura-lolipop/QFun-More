@@ -13,34 +13,48 @@ import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 
 /**
- * 底栏"动态"Tab 直达 QQ 空间好友动态页。
+ * 底栏"动态"Tab 直达 QQ 空间好友动态页（完整还原原生 QZONE tab 配置）。
  *
- * 逆向结论（QQ 9.3.15，base.apk classes4.dex / tinker classes4.dex 均验证）：
- * - 底栏框架每次启动由 FrameControllerInjectImpl.s(...) 构建 FrameInitBean
- *   (com.tencent.mobileqq.activity.home.impl.h)，随后调用
- *   TabFrameControllerImpl.checkBusinessSwitch(h) → 遍历 sFrameBusinessCallbacks，
- *   其中 QZONE 业务 com.tencent.mobileqq.activity.framebusiness.s.r(h) 询问
- *   cooperation.qzone.api.QZoneApiProxy.needShowQzoneFrame(Context, AppRuntime)
- *   （静态门面 → QRoute → IQZoneApiProxy）并把结果写入 h.e("QZONE"/"LEBA", ...)。
- *   hook 成功但闸门不再被执行/时序不匹配时状态永远 LEBA=true，即聚合页
- *   com.tencent.mobileqq.leba.Leba。
- * - checkBusinessSwitch 返回后，framebusiness.s.b(...)（"setQzoneLebaTab"）读取
- *   h.c("QZONE")：true → ILebaFrameApi.showQzoneFrame() + addFrame(QzoneFrame)，
- *   QzoneFrame 内嵌 com.qzone.reborn.feedx.fragment.QZoneFeedX*FrameFragment
- *   即好友动态页；false → showLebaFrame() 聚合页。
+ * 逆向结论（QQ 9.3.15，base.apk / tinker_classN.apk classes4.dex 等逐指令比对）：
+ * - 底栏框架启动时由 FrameControllerImpl 注入器构建 FrameInitBean
+ *   (com.tencent.mobileqq.activity.home.impl.h，内存 HashMap 状态)，随后
+ *   TabFrameControllerImpl.checkBusinessSwitch(h) → dispatchCheckBusinessSwitch
+ *   遍历 sFrameBusinessCallbacks（<clinit> 时从 home/w.b 注册，key=getKey()）
+ *   逐个调 y.r(h)。QZONE 业务 com.tencent.mobileqq.activity.framebusiness.s.r(h)
+ *   调门面 cooperation.qzone.api.QZoneApiProxy.needShowQzoneFrame(Context,
+ *   AppRuntime)（public static → QRoute.api(IQZoneApiProxy) → 反射实例化
+ *   QZoneApiProxyImpl），按结果写 h.e("QZONE"/"LEBA", ...)。
+ *   其他业务（GUILD/ME/AI_ASSISTANT/META_DREAM…）的 r(h) 也在同一轮 dispatch
+ *   内读取各自 key —— 状态必须在 dispatch 期间为 QZONE=true 才能还原原生环境。
+ * - tab 槽位固定为 "LEBA"（initTabIndexByConfig 拼 tab 列表只用 LEBA），槽内
+ *   挂 QzoneFrame 还是聚合页 Leba 由 framebusiness.s.b（setQzoneLebaTab）按
+ *   h.c("QZONE") 决定：true → ILebaFrameApi.showQzoneFrame() + addFrame
+ *   (QzoneFrame)，QzoneFrame 内嵌 com.qzone.reborn.feedx.fragment.QZoneFeedX*
+ *   FrameFragment 即好友动态页。
+ * - 除启动期外，reborn 空间 UI 在运行时反复调同一门面判断"是否 QZONE frame
+ *   模式"：QZoneFriendFeedxTitle.C()/V(Z)（标题栏/设置入口显隐，false 会
+ *   setVisibility(GONE) → 设置按钮半残）、feedx/util/j.h、feedpro
+ *   QzoneFriendFeedProTitlePart.v9、presenter/ad/e.x、route/a.h 等。
+ *   只翻 FrameInitBean 标志位对这些运行时调用无效 —— 这是上一版
+ *   （仅覆写状态）背景割裂/设置不可用的根因。
  *
- * 因此新方案在 checkBusinessSwitch 之后直接覆写状态 QZONE=true / LEBA=false，
- * 走 QQ 原生"showQzoneFrame"分支，无闪现、无 Activity 跳转。
- * 状态类 (home/impl/h) 已混淆，方法按签名 (String, boolean)->void 动态定位。
+ * 因此本版三管齐下，等价于"原生配置了 QZONE 直开的用户"：
+ * 1) 门面静态方法 hookBefore 返回 true（主路，覆盖 s.r 与全部 reborn 运行时调用）；
+ * 2) impl 实例方法 hookBefore 返回 true（兜底 QRoute 直连 impl 的调用方）；
+ * 3) checkBusinessSwitch hookAfter 强制 h("QZONE")=true / h("LEBA")=false
+ *    （时序兜底：QQ 启动期 perf.startup 追踪显示 FrameInitBean 首次构建可能
+ *    早于模块 hook 安装，其后 buildTabIcon/重建路径仍会再跑一次，此兜底保证
+ *    槽内 frame 正确切换）。
  */
 @HookItemAnnotation(
     "底栏直接打开空间动态",
-    "点击底栏动态Tab时直接显示空间好友动态（QQ 9.x 覆写底栏框架 QZONE/LEBA 状态，空间页缺失时自动回退聚合页）",
+    "点击底栏动态Tab时直接显示空间好友动态（还原原生 QZONE tab 配置，含标题栏/设置等运行时行为；空间页缺失时自动回退聚合页）",
     HookCategory.SOCIAL
 )
 object QzoneTabDirect : BaseSwitchHookItem() {
 
     private const val QZONE_API_PROXY = "com.tencent.qzonehub.api.impl.QZoneApiProxyImpl"
+    private const val QZONE_API_PROXY_FACADE = "cooperation.qzone.api.QZoneApiProxy"
     private const val APP_RUNTIME = "mqq.app.AppRuntime"
     private const val TAB_FRAME_CONTROLLER =
         "com.tencent.mobileqq.activity.home.impl.TabFrameControllerImpl"
@@ -50,54 +64,73 @@ object QzoneTabDirect : BaseSwitchHookItem() {
     private const val KEY_QZONE = "QZONE"
     private const val KEY_LEBA = "LEBA"
 
-    /** 老路：needShowQzoneFrame 闸门（部分旧版本仍有效）。 */
-    private var gateMethod: Method? = null
+    /** 主路：门面静态方法（reborn UI 运行时判断全部走这里）。 */
+    private var facadeMethod: Method? = null
 
-    /** 新路：TabFrameControllerImpl.checkBusinessSwitch(FrameInitBean)。 */
+    /** 兜底：QRoute 实际实例化的 impl 实例方法。 */
+    private var implGateMethod: Method? = null
+
+    /** 时序兜底：TabFrameControllerImpl.checkBusinessSwitch(FrameInitBean)。 */
     private var checkBusinessSwitch: Method? = null
 
-    /** FrameInitBean.e(String, boolean)：状态写入（混淆名，按签名定位）。 */
+    /** FrameInitBean 状态写入（混淆名，按 (String, boolean)->void 签名定位）。 */
     private var stateSetter: Method? = null
 
     override fun onInit(): Boolean {
         if (HostInfo.isQQ && HostInfo.versionCode < MIN_VERSION_CODE) return false
 
-        val runtime = APP_RUNTIME.clazz
-        gateMethod = QZONE_API_PROXY.clazz?.declaredMethods?.firstOrNull {
-            it.name == "needShowQzoneFrame" && it.parameterCount == 2 &&
-                Context::class.java.isAssignableFrom(it.parameterTypes[0]) &&
-                runtime != null && it.parameterTypes[1].isAssignableFrom(runtime)
-        }
-
-        // 空间框类缺失（如组件被裁剪）时只能走老闸门，否则保留聚合页兜底
+        // 空间框类缺失（组件被裁剪等）时整体禁用，保留聚合页兜底
         if (QZONE_FRAME.clazz == null) {
-            LogUtils.d("$name: QzoneFrame 缺失，仅尝试 needShowQzoneFrame 闸门")
-            return gateMethod != null
+            LogUtils.d("$name: QzoneFrame 缺失，功能禁用")
+            return false
         }
 
-        val controller = TAB_FRAME_CONTROLLER.clazz ?: return gateMethod != null
-        checkBusinessSwitch = controller.declaredMethods.firstOrNull {
-            it.name == "checkBusinessSwitch" && it.parameterCount == 1
-        } ?: return gateMethod != null
+        val runtime = APP_RUNTIME.clazz ?: return false
 
-        val stateClass = checkBusinessSwitch!!.parameterTypes[0]
-        stateSetter = stateClass.declaredMethods.firstOrNull {
-            !Modifier.isStatic(it.modifiers) && it.returnType == Void.TYPE && it.parameterCount == 2 &&
-                it.parameterTypes[0] == String::class.java &&
-                it.parameterTypes[1] == Boolean::class.javaPrimitiveType
-        } ?: return gateMethod != null
+        fun Method.isNeedShowQzoneFrame() =
+            name == "needShowQzoneFrame" && parameterCount == 2 &&
+                Context::class.java.isAssignableFrom(parameterTypes[0]) &&
+                parameterTypes[1].isAssignableFrom(runtime)
+
+        facadeMethod = QZONE_API_PROXY_FACADE.clazz?.declaredMethods?.firstOrNull {
+            Modifier.isStatic(it.modifiers) && it.isNeedShowQzoneFrame()
+        }
+        implGateMethod = QZONE_API_PROXY.clazz?.declaredMethods?.firstOrNull {
+            !Modifier.isStatic(it.modifiers) && it.isNeedShowQzoneFrame()
+        }
+        if (facadeMethod == null && implGateMethod == null) {
+            LogUtils.d("$name: needShowQzoneFrame 门面/impl 均未找到")
+            return false
+        }
+
+        checkBusinessSwitch = TAB_FRAME_CONTROLLER.clazz?.declaredMethods?.firstOrNull {
+            it.name == "checkBusinessSwitch" && it.parameterCount == 1
+        }
+        if (checkBusinessSwitch != null) {
+            val stateClass = checkBusinessSwitch!!.parameterTypes[0]
+            stateSetter = stateClass.declaredMethods.firstOrNull {
+                !Modifier.isStatic(it.modifiers) && it.returnType == Void.TYPE &&
+                    it.parameterCount == 2 &&
+                    it.parameterTypes[0] == String::class.java &&
+                    it.parameterTypes[1] == Boolean::class.javaPrimitiveType
+            }
+            if (stateSetter == null) checkBusinessSwitch = null
+        }
 
         return true
     }
 
     override fun onHook() {
+        // 1) 主路：全局闸门返回 true —— 启动期 frame 决策 + reborn UI 运行时判断
+        //    （标题栏/设置/路由/广告）全部进入原生 QZONE frame 模式
+        facadeMethod?.hookBefore(this) { param -> param.result = true }
+        // 2) 兜底：QRoute 直连 impl 的调用方
+        implGateMethod?.hookBefore(this) { param -> param.result = true }
+        // 3) 时序兜底：闸门首次消费早于 hook 安装时，后续重建仍强制槽内挂 QzoneFrame
         checkBusinessSwitch?.hookAfter(this) { param ->
             val state = param.args.firstOrNull() ?: return@hookAfter
             stateSetter?.invoke(state, KEY_QZONE, true)
             stateSetter?.invoke(state, KEY_LEBA, false)
-        }
-        gateMethod?.hookBefore(this) { param ->
-            param.result = true
         }
     }
 }
