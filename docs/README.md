@@ -15,6 +15,7 @@
 | [deobfuscation-guide.md](deobfuscation-guide.md) | 反混淆指南：喵呜字符串加密算法与解密工具、飘花类名混淆、混淆名重定位三法、QUI 语义色 | 遇到混淆名/加密字符串/找不到类时 |
 | [dexkit-migration-guide.md](dexkit-migration-guide.md) | DexKit 迁移规范："坏了才迁"策略、锚点验证 SOP、实现范例 | 功能失效需要迁 DexKit，或写新功能选定位方式时 |
 | [gray-band-postmortem.md](gray-band-postmortem.md) | 灰带修复完整复盘（B2 直开模式视觉修复）：分层模型、三层灰源、修复方案、失败史 | 动空间页视觉，或想看完整调试方法论示范 |
+| [logging.md](logging.md) | 日志与取证文件位置：LSPosed 日志拉取命令、诊断打法、进程内 dump 位置 | **任何诊断/取证之前必读** |
 
 ## 一页速查
 
