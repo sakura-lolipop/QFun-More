@@ -132,5 +132,35 @@ object QzoneTabDirect : BaseSwitchHookItem() {
             stateSetter?.invoke(state, KEY_QZONE, true)
             stateSetter?.invoke(state, KEY_LEBA, false)
         }
+        // 灰带1：空的订阅刷新头容器（36px 纯灰、无内容）—— 构造时挂 attach 监听，
+        // 挂树瞬间 GONE 父容器；仅作用于空间 feed 头内部，内容非空时自动恢复
+        "com.tencent.biz.subscribe.part.block.base.RefreshHeaderView".clazz
+            ?.declaredConstructors
+            ?.forEach { ctor ->
+                ctor.hookAfter(this) { param ->
+                    val v = param.thisObject as? android.view.View ?: return@hookAfter
+                    v.addOnAttachStateChangeListener(object : android.view.View.OnAttachStateChangeListener {
+                        override fun onViewAttachedToWindow(av: android.view.View) {
+                            var p: android.view.ViewParent = av.parent
+                            var inFeedHeader = false
+                            while (p is android.view.ViewGroup) {
+                                if (p.javaClass.simpleName == "QzoneConciseHeaderView") {
+                                    inFeedHeader = true
+                                    break
+                                }
+                                p = p.parent
+                            }
+                            if (!inFeedHeader) return
+                            (av.parent as? android.view.ViewGroup)?.visibility = android.view.View.GONE
+                            av.post {
+                                val pg = av.parent as? android.view.ViewGroup
+                                if (av.height > 0 && pg != null) pg.visibility = android.view.View.VISIBLE
+                            }
+                        }
+
+                        override fun onViewDetachedFromWindow(av: android.view.View) {}
+                    })
+                }
+            }
     }
 }
