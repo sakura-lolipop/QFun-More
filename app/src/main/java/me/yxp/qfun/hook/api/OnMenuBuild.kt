@@ -7,6 +7,7 @@ import android.widget.TextView
 import com.tencent.mobileqq.aio.msg.AIOMsgItem
 import com.tencent.qqnt.aio.menu.ui.QQCustomMenuExpandableLayout
 import com.tencent.qqnt.kernel.nativeinterface.MsgRecord
+import me.yxp.qfun.BuildConfig
 import me.yxp.qfun.R
 import me.yxp.qfun.annotation.HookItemAnnotation
 import me.yxp.qfun.hook.base.BaseApiHookItem
@@ -69,6 +70,20 @@ object OnMenuBuild : BaseApiHookItem<MenuClickListener>(), DexKitTask {
                     if (!listener.accept(msgData)) return@forEachChecked
 
                     addMenuItem(items, itemClass, listener.menuKey, aioMsgItem)
+                }
+
+                // 调试构建的运行时自诊断（release 由常量折叠剔除）：
+                // 菜单显示异常时复现一次，LSPosed 日志 grep MenuDiag 直接看事实——
+                // msgType 实际值、开关数、插入数，禁止"理论→改码→装机试"盲循环
+                if (BuildConfig.DEBUG) {
+                    LogUtils.e(
+                        "MenuDiag",
+                        IllegalStateException(
+                            "items=${items.size} msgType=$msgType " +
+                                "chatType=${msgRecord.chatType} listeners=${listenerSet.size} " +
+                                "shown=${items.count { it.javaClass == itemClass }}"
+                        )
+                    )
                 }
 
             }

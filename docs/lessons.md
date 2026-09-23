@@ -112,3 +112,41 @@ Python 只用于：二进制/资源解析（androguard）、生成数据文件�
   且混入其他应用 → 进程内视图 dump 才可靠（参考 dumpViewTreeWithBgOnce）
 - androguard 记得 `logger.remove()`；ARSCParser 喂 bytes
 - 用户正在用手机时**停止 UI 自动化**（tap 会误触）；取证改由用户配合操作
+
+## §12 msgType 数字白名单区分不了同类消息：元素级 accept() 精过滤
+
+**现象**：长按任何消息（文本/图片/表情）都显示"撤回重发/保存表情/复制图链"，点了没功能；
+诊断日志显示文本/图片/表情三种场景下全列表项 msgType 恒=2。
+
+**根因**：QQNT 里文本、MarketFace 表情、图文混排同属 msgType=2（`ForwardPtt.kt` 的
+`MSG_TYPE_TEXT = 2` 早已写在源码里）——一个数字在**原理上**无法区分纯文本和表情，
+menuKey 白名单 `[2,9]` 想表达"图片和表情"，实际放行的是"文本类+9"。
+QStory 菜单实现全程不读 msgType，只按 elements 判空（getPicElement / getPttElement /
+elementType==1）。
+
+**正确做法**：`MenuClickListener.accept(msgData)` 精过滤钩子——白名单做粗筛，
+功能按消息元素自判能否处理（图片类功能 accept = 存在 picElement），默认 true 向后兼容。
+**修 msgType 类 bug 前先 grep 本仓库确认值语义（一分钟），别逆向想象（三轮弯路）**。
+
+功能作用域同理：菜单显示过滤还要含"消息发送者"维度（撤回类功能仅自己发的消息显示，
+`accept = userUin == currentUin`）——过滤不完整时"显示但必无效"与"不显示"手感天差地别。
+
+## §13 调试循环禁令：先诊断拿事实，再改码
+
+**现象**：菜单 bug 连续四轮"理论→修复→装上→用户试→问题依旧"
+（反射读取→WeakHashMap→顺序调整→逆向对照），每轮理论都自洽，每轮都死。
+
+**根因**：修复的预期效果从未与实际观察强制校验。用户验证是最贵的循环（要人配合），
+日志是最便宜的循环（装机复现一次全部事实到手）。失败循环发生在**调试期**，
+pre-commit 类事后检查根本够不着。
+
+**正确做法**：
+- **debug 构建自带运行时自诊断**（OnMenuBuild 的 MenuDiag，`BuildConfig.DEBUG` 控制，
+  release 常量折叠剔除零痕迹）：排查 hook 行为问题一律先 `assembleDebug` 装机，
+  复现一次后 `grep MenuDiag` 拿事实（msgType 实际值/开关数/插入数）；
+- 每个假设落笔时写明"**看到 X 则假设废弃**"，与日志对照，不满足即弃；
+- 有对照实现（QStory/上游）时，**逆向对照是第一动作**而非兜底：本次逆向 35 分钟定案，
+  胜过三轮盲修；QStory 与 QFun 的菜单消息获取同源（菜单项→AIOMsgItem→getMsgRecord），
+  差异只在类型判别走 elements；
+- 用户反驳（"图片上怎么也显示"）是第一手证据，**触发理论重检**，
+  不要把新观察解读进旧框架续命。

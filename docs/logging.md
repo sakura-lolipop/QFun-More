@@ -20,6 +20,10 @@ adb -s 582QUGHG222LM shell su -c "ls -la /data/adb/lspd/log/"
 
 ## 2. 诊断日志的正确打法
 
+- **调试构建自带 MenuDiag 自诊断**（OnMenuBuild，`BuildConfig.DEBUG` 控制，release 无痕迹）：
+  排查菜单显示问题时 `assembleDebug` 装机 → 复现一次 → `grep MenuDiag`，
+  一条日志给出 items 数 / msgType / chatType / 开关数 / 插入数。
+  纪律：先拿事实再改码，禁止"理论→改码→装机试证"盲循环（lessons.md §13）。
 - 状态打包进假异常的 message（必进 LSPosed 日志）：
   ```kotlin
   LogUtils.e("QzoneTabDirect.arm", IllegalStateException("clazz=${clazz != null} methods=${ms?.size}"))
