@@ -35,8 +35,10 @@ object FastReSend : BaseSwitchHookItem(), MenuClickListener {
 
     override val menuKey: String = "[QFun],$name,撤回重发,,"
 
+    // 功能语义：撤回自己发的消息并把内容回填输入框改后重发。
+    // onClick 对任意元素通用（文本原样回填，图片额外缓存），仅限自己的消息
     override fun accept(msgData: MsgData): Boolean =
-        msgData.data.elements.any { it.picElement != null }
+        msgData.userUin == QQCurrentEnv.currentUin
 
     override fun onClick(msgData: MsgData) {
 
