@@ -2,12 +2,15 @@ package me.yxp.qfun.hook.social
 
 import android.content.Context
 import android.graphics.Rect
+import android.os.Handler
+import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewParent
 import me.yxp.qfun.annotation.HookCategory
 import me.yxp.qfun.annotation.HookItemAnnotation
 import me.yxp.qfun.hook.base.BaseSwitchHookItem
+import me.yxp.qfun.utils.hook.doNothing
 import me.yxp.qfun.utils.hook.hookAfter
 import me.yxp.qfun.utils.hook.hookBefore
 import me.yxp.qfun.utils.log.LogUtils
@@ -18,42 +21,26 @@ import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 
 /**
- * 底栏"动态"Tab 直达 QQ 空间好友动态页（完整还原原生 QZONE tab 配置）。
+ * 底栏"动态"Tab 直达 QQ 空间好友动态页 + 空间页视觉修复。
  *
- * 逆向结论（QQ 9.3.15，base.apk / tinker_classN.apk classes4.dex 等逐指令比对）：
- * - 底栏框架启动时由 FrameControllerImpl 注入器构建 FrameInitBean
- *   (com.tencent.mobileqq.activity.home.impl.h，内存 HashMap 状态)，随后
- *   TabFrameControllerImpl.checkBusinessSwitch(h) → dispatchCheckBusinessSwitch
- *   遍历 sFrameBusinessCallbacks（<clinit> 时从 home/w.b 注册，key=getKey()）
- *   逐个调 y.r(h)。QZONE 业务 com.tencent.mobileqq.activity.framebusiness.s.r(h)
- *   调门面 cooperation.qzone.api.QZoneApiProxy.needShowQzoneFrame(Context,
- *   AppRuntime)（public static → QRoute.api(IQZoneApiProxy) → 反射实例化
- *   QZoneApiProxyImpl），按结果写 h.e("QZONE"/"LEBA", ...)。
- *   其他业务（GUILD/ME/AI_ASSISTANT/META_DREAM…）的 r(h) 也在同一轮 dispatch
- *   内读取各自 key —— 状态必须在 dispatch 期间为 QZONE=true 才能还原原生环境。
- * - tab 槽位固定为 "LEBA"（initTabIndexByConfig 拼 tab 列表只用 LEBA），槽内
- *   挂 QzoneFrame 还是聚合页 Leba 由 framebusiness.s.b（setQzoneLebaTab）按
- *   h.c("QZONE") 决定：true → ILebaFrameApi.showQzoneFrame() + addFrame
- *   (QzoneFrame)，QzoneFrame 内嵌 com.qzone.reborn.feedx.fragment.QZoneFeedX*
- *   FrameFragment 即好友动态页。
- * - 除启动期外，reborn 空间 UI 在运行时反复调同一门面判断"是否 QZONE frame
- *   模式"：QZoneFriendFeedxTitle.C()/V(Z)（标题栏/设置入口显隐，false 会
- *   setVisibility(GONE) → 设置按钮半残）、feedx/util/j.h、feedpro
- *   QzoneFriendFeedProTitlePart.v9、presenter/ad/e.x、route/a.h 等。
- *   只翻 FrameInitBean 标志位对这些运行时调用无效 —— 这是上一版
- *   （仅覆写状态）背景割裂/设置不可用的根因。
+ * 直开原理（QQ 9.3.15 实证）：
+ * - 启动期 frame 决策读 checkBusinessSwitch 产出的状态 h("QZONE"/"LEBA")，
+ *   运行期 reborn UI 反复询问 needShowQzoneFrame（门面/impl 两个入口都有调用方）。
+ * - QStory 2.6.4 原实现只 hook impl（在 9.3.15 上失效）。本版三管齐下：
+ *   facade 静态 + impl 实例（均返回 true）+ checkBusinessSwitch 状态覆写。
+ * - facade 类启动期不可加载 → facade 钩子在 armFeedHooks() 里懒注册
+ *   （impl 渲染钩子触发时重试，直到类可加载）。
  *
- * 因此本版三管齐下，等价于"原生配置了 QZONE 直开的用户"：
- * 1) 门面静态方法 hookBefore 返回 true（主路，覆盖 s.r 与全部 reborn 运行时调用）；
- * 2) impl 实例方法 hookBefore 返回 true（兜底 QRoute 直连 impl 的调用方）；
- * 3) checkBusinessSwitch hookAfter 强制 h("QZONE")=true / h("LEBA")=false
- *    （时序兜底：QQ 启动期 perf.startup 追踪显示 FrameInitBean 首次构建可能
- *    早于模块 hook 安装，其后 buildTabIcon/重建路径仍会再跑一次，此兜底保证
- *    槽内 frame 正确切换）。
+ * 灰带根治（详见 qfunory/gray.md）：
+ * - 灰带1：QzoneConciseHeaderView 内空的订阅刷新头容器（36px 灰）→ GONE。
+ * - 灰带2：feedx/widget/j（ItemDecoration，混淆名随版本变）在卡片间隙
+ *   onDraw 画 #dedddc 实心条并预留 offsets → getItemOffsets 清零 + onDraw 拦截。
+ * - 评论条 QUI 填充底色 → 绑定后置空背景让皮肤透出（卡片灰底亦让位）。
+ * - qzone 侧类启动期不可加载 → 全部在 impl 首次触发时懒挂载。
  */
 @HookItemAnnotation(
     "底栏直接打开空间动态",
-    "点击底栏动态Tab时直接显示空间好友动态（还原原生 QZONE tab 配置，含标题栏/设置等运行时行为；空间页缺失时自动回退聚合页）",
+    "点击底栏动态Tab时直接显示空间好友动态（含灰带消除；空间页缺失时自动回退聚合页）",
     HookCategory.SOCIAL
 )
 object QzoneTabDirect : BaseSwitchHookItem() {
@@ -64,29 +51,29 @@ object QzoneTabDirect : BaseSwitchHookItem() {
     private const val TAB_FRAME_CONTROLLER =
         "com.tencent.mobileqq.activity.home.impl.TabFrameControllerImpl"
     private const val QZONE_FRAME = "com.tencent.mobileqq.activity.leba.QzoneFrame"
+    private const val SUBSCRIBE_REFRESH_HEADER =
+        "com.tencent.biz.subscribe.part.block.base.RefreshHeaderView"
+    private const val FEED_ITEM_BASE = "com.qzone.reborn.feedx.itemview.QZoneBaseFeedItemView"
+    private const val FEED_LIST_DECORATION = "com.qzone.reborn.feedx.widget.j"
+    private const val BOTTOM_AREA_ID = 0x7f0a6619
     private const val MIN_VERSION_CODE = 12290
 
     private const val KEY_QZONE = "QZONE"
     private const val KEY_LEBA = "LEBA"
-    private const val FEED_ITEM_BASE = "com.qzone.reborn.feedx.itemview.QZoneBaseFeedItemView"
-    private const val BOTTOM_AREA_ID = 0x7f0a6619
 
-    /** 主路：门面静态方法（reborn UI 运行时判断全部走这里）。 */
     private var facadeMethod: Method? = null
-
-    /** 兜底：QRoute 实际实例化的 impl 实例方法。 */
     private var implGateMethod: Method? = null
-
-    /** 时序兜底：TabFrameControllerImpl.checkBusinessSwitch(FrameInitBean)。 */
     private var checkBusinessSwitch: Method? = null
-
-    /** FrameInitBean 状态写入（混淆名，按 (String, boolean)->void 签名定位）。 */
     private var stateSetter: Method? = null
+
+    private var facadeHooksArmed = false
+    private var feedHooksArmed = false
+    private var listDecoArmed = false
+    private var facadeCalls = 0
 
     override fun onInit(): Boolean {
         if (HostInfo.isQQ && HostInfo.versionCode < MIN_VERSION_CODE) return false
 
-        // 空间框类缺失（组件被裁剪等）时整体禁用，保留聚合页兜底
         if (QZONE_FRAME.clazz == null) {
             LogUtils.d("$name: QzoneFrame 缺失，功能禁用")
             return false
@@ -128,138 +115,132 @@ object QzoneTabDirect : BaseSwitchHookItem() {
     }
 
     override fun onHook() {
-        // 1) 主路：全局闸门返回 true —— 启动期 frame 决策 + reborn UI 运行时判断
-        //    （标题栏/设置/路由/广告）全部进入原生 QZONE frame 模式
+        // 1) 门面（onInit 时类不可加载则为 null，armFeedHooks 懒补注册）
         facadeMethod?.hookBefore(this) { param -> param.result = true }
-        // 2) 兜底：QRoute 直连 impl 的调用方
+        // 2) impl 兜底：feed 渲染必经，也是懒挂载的触发源
         implGateMethod?.hookBefore(this) { param ->
             param.result = true
             armFeedHooks()
+            armListDecoration()
             if (facadeCalls++ % 20 == 0) dumpViewTreeWithBgOnce()
         }
-        // 3) 时序兜底：闸门首次消费早于 hook 安装时，后续重建仍强制槽内挂 QzoneFrame
+        // 3) 启动期 frame 决策状态覆写
         checkBusinessSwitch?.hookAfter(this) { param ->
             val state = param.args.firstOrNull() ?: return@hookAfter
             stateSetter?.invoke(state, KEY_QZONE, true)
             stateSetter?.invoke(state, KEY_LEBA, false)
         }
-        // 灰带1：空的订阅刷新头容器（36px 纯灰、无内容）—— 构造时挂 attach 监听，
-        // 挂树瞬间 GONE 父容器；仅作用于空间 feed 头内部，内容非空时自动恢复
-        "com.tencent.biz.subscribe.part.block.base.RefreshHeaderView".clazz
-            ?.declaredConstructors
-            ?.forEach { ctor ->
-                ctor.hookAfter(this) { param ->
-                    val v = param.thisObject as? android.view.View ?: return@hookAfter
-                    v.addOnAttachStateChangeListener(object : android.view.View.OnAttachStateChangeListener {
-                        override fun onViewAttachedToWindow(av: android.view.View) {
-                            var p: android.view.ViewParent = av.parent
-                            var inFeedHeader = false
-                            while (p is android.view.ViewGroup) {
-                                if (p.javaClass.simpleName == "QzoneConciseHeaderView") {
-                                    inFeedHeader = true
-                                    break
-                                }
-                                p = p.parent
-                            }
-                            if (!inFeedHeader) return
-                            (av.parent as? android.view.ViewGroup)?.visibility = android.view.View.GONE
-                            av.post {
-                                val pg = av.parent as? android.view.ViewGroup
-                                if (av.height > 0 && pg != null) pg.visibility = android.view.View.VISIBLE
-                            }
+        // 4) 灰带1：空的订阅刷新头容器 —— attach 瞬间 GONE 父容器（内容非空自动恢复）
+        SUBSCRIBE_REFRESH_HEADER.clazz?.declaredConstructors?.forEach { ctor ->
+            ctor.hookAfter(this) { param ->
+                val v = param.thisObject as? View ?: return@hookAfter
+                v.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+                    override fun onViewAttachedToWindow(av: View) {
+                        if (!hasAncestorNamed(av, "QzoneConciseHeaderView")) return
+                        (av.parent as? ViewGroup)?.visibility = View.GONE
+                        av.post {
+                            val p = av.parent as? ViewGroup
+                            if (av.height > 0 && p != null) p.visibility = View.VISIBLE
                         }
+                    }
 
-                        override fun onViewDetachedFromWindow(av: android.view.View) {}
-                    })
-                }
+                    override fun onViewDetachedFromWindow(av: View) {}
+                })
             }
-        // TEMP-DEBUG: 空间页渲染时自动 dump（含背景 drawable 类型 + margin），仅成功写入一次
-        facadeMethod?.hookAfter(this) { param ->
-            if (facadeCalls++ % 20 == 0) dumpViewTreeWithBgOnce()
-            armFeedHooks()
         }
-        // 灰带2根治：底部区（快捷评论条）的 QUI 语义填充底色遮挡页面皮肤。
-        // 每次绑定（含复用）后清空该子树全部背景 → 网格皮肤透出，布局零改动零闪现。
-        FEED_ITEM_BASE.clazz?.declaredMethods
-            ?.filter { it.name == "bindData" || it.name == "c0" }
-            ?.forEach { m ->
-                m.hookAfter(this) { param ->
-                    (param.thisObject as? View)?.let(::clearBottomAreaSkinBlocker)
-                }
-            }
     }
 
-    private var feedHooksArmed = false
-
-    /** 懒挂载：qzone 类在空间页首次打开后才可加载，此时再挂 bind/装饰器钩子。 */
+    /** 懒挂载：facade 门面钩子补注册 + feed 卡片绑定钩子。 */
     private fun armFeedHooks() {
-        if (feedHooksArmed) return
-        // facade 类加载晚：此处补注册门面钩子（若此刻仍不可加载，下次调用重试）
-        if (facadeMethod == null) {
-            val f = QZONE_API_PROXY_FACADE.clazz?.declaredMethods?.firstOrNull {
-                it.name == "needShowQzoneFrame" && it.parameterCount == 2 &&
-                    Context::class.java.isAssignableFrom(it.parameterTypes[0])
-            }
-            f?.let {
-                facadeMethod = it
-                it.hookBefore(this) { p -> p.result = true }
-            }
-        }
-        val ms = FEED_ITEM_BASE.clazz?.declaredMethods ?: run {
-            LogUtils.e("QzoneTabDirect.arm", IllegalStateException("FEED_ITEM_BASE 仍不可加载"))
-            return
-        }
-        LogUtils.e("QzoneTabDirect.arm", IllegalStateException("FEED_ITEM_BASE.clazz=${FEED_ITEM_BASE.clazz != null} methods=${ms?.size}"))
-        ms.filter { it.name == "bindData" || it.name == "c0" }.forEach { m ->
-            m.hookAfter(this) { param ->
-                (param.thisObject as? View)?.let(::clearBottomAreaSkinBlocker)
-            }
-        }
-        listOf(
-            "com.qzone.reborn.feedx.widget.picmixvideo.j\$a",
-            "com.qzone.reborn.feedx.util.v\$a",
-        ).forEach { decoName ->
-            decoName.clazz?.declaredMethods?.firstOrNull { it.name == "getItemOffsets" }?.let {
-                it.hookAfter(this) { param ->
-                    (param.args.firstOrNull() as? Rect)?.set(0, 0, 0, 0)
+        if (!facadeHooksArmed) {
+            val runtime = APP_RUNTIME.clazz
+            val f = if (runtime == null) {
+                null
+            } else {
+                QZONE_API_PROXY_FACADE.clazz?.declaredMethods?.firstOrNull {
+                    it.name == "needShowQzoneFrame" && it.parameterCount == 2 &&
+                        Context::class.java.isAssignableFrom(it.parameterTypes[0]) &&
+                        it.parameterTypes[1].isAssignableFrom(runtime)
                 }
             }
+            if (f != null) {
+                facadeMethod = f
+                f.hookBefore(this) { param -> param.result = true }
+                facadeHooksArmed = true
+            }
         }
-        feedHooksArmed = true
-        LogUtils.e("QzoneTabDirect.arm", IllegalStateException("armed, hooked=${ms.count { it.name == "bindData" || it.name == "c0" }}"))
+        if (!feedHooksArmed) {
+            val ms = FEED_ITEM_BASE.clazz?.declaredMethods
+            if (ms != null) {
+                ms.filter { it.name == "bindData" || it.name == "c0" }.forEach { m ->
+                    m.hookAfter(this) { param ->
+                        (param.thisObject as? View)?.let(::surgeryOnBind)
+                    }
+                }
+                feedHooksArmed = true
+            }
+        }
     }
 
-    /** 清空底部区子树里"全宽视图"的背景（保住内缩的输入框圆角底），让皮肤透出。 */
-    private fun clearBottomAreaSkinBlocker(card: View) {
-        runCatching {
-            val strip = card.findViewById<View>(BOTTOM_AREA_ID)
-            LogUtils.e("QzoneTabDirect.clear", IllegalStateException("strip=${strip != null} cardY=${card.height}"))
-            val found = strip ?: return
-            fun clear(v: View) {
-                if (v.background != null) v.background = null
-                val lp = v.layoutParams as? ViewGroup.MarginLayoutParams
-                if (lp != null && (lp.topMargin != 0 || lp.bottomMargin != 0)) {
-                    lp.topMargin = 0
-                    lp.bottomMargin = 0
+    /** 懒挂载：列表装饰器（灰条绘制与预留）双拦截。 */
+    private fun armListDecoration() {
+        if (listDecoArmed) return
+        val ms = FEED_LIST_DECORATION.clazz?.declaredMethods
+        if (ms != null) {
+            ms.forEach { m ->
+                when (m.name) {
+                    "getItemOffsets" -> m.hookAfter(this) { param ->
+                        (param.args.firstOrNull() as? Rect)?.set(0, 0, 0, 0)
+                    }
+
+                    "onDraw" -> m.doNothing(this)
                 }
-                if (v is ViewGroup) for (i in 0 until v.childCount) clear(v.getChildAt(i))
             }
-            clear(found)
+            listDecoArmed = true
+        }
+    }
+
+    /**
+     * 每次绑定后的卡片手术（含复用视图；绑定后、布局前执行，无闪现）：
+     * 1) 卡片灰底 ColorDrawable 置空 → 页面级皮肤透出（灰带2 主体）；
+     * 2) 卡片 margin 原地归零（卡片间 24px 灰隙）；
+     * 3) 底部区子树（快捷评论条）背景清空 + margin 归零。
+     * 注意：本方法在布局计算期间被调用，禁止 `layoutParams =` 赋值（会抛异常），
+     * margin 一律原地改字段，下一轮布局自然生效。
+     */
+    private fun surgeryOnBind(card: View) {
+        runCatching {
+            if (card.background is android.graphics.drawable.ColorDrawable) card.background = null
             val lp = card.layoutParams as? ViewGroup.MarginLayoutParams
             if (lp != null && (lp.topMargin != 0 || lp.bottomMargin != 0)) {
                 lp.topMargin = 0
                 lp.bottomMargin = 0
             }
+            val strip = card.findViewById<View>(BOTTOM_AREA_ID) ?: return
+            fun clear(v: View) {
+                if (v !== strip && v.background != null) v.background = null
+                val vlp = v.layoutParams as? ViewGroup.MarginLayoutParams
+                if (vlp != null && (vlp.topMargin != 0 || vlp.bottomMargin != 0)) {
+                    vlp.topMargin = 0
+                    vlp.bottomMargin = 0
+                }
+                if (v is ViewGroup) for (i in 0 until v.childCount) clear(v.getChildAt(i))
+            }
+            clear(strip)
         }
     }
 
-    private var facadeCalls = 0
-    private var headerHookArmed = false
-    private val bgDumped = java.util.concurrent.atomic.AtomicBoolean(false)
+    private fun hasAncestorNamed(v: View, simpleName: String): Boolean {
+        var p: ViewParent = v.parent
+        while (p is ViewGroup) {
+            if (p.javaClass.simpleName == simpleName) return true
+            p = p.parent
+        }
+        return false
+    }
 
-    /** 打印 类名/坐标/尺寸/背景drawable类型/margin。仅当空间页在场时写入，否则留待下次触发。 */
+    /** TEMP-DEBUG: 空间页渲染时 dump 视图树（含背景类型），定位稳定后移除。 */
     private fun dumpViewTreeWithBgOnce() {
-        if (!bgDumped.compareAndSet(false, true)) return
         runCatching {
             val activity = QQCurrentEnv.activity ?: return
             val out = StringBuilder()
@@ -268,7 +249,7 @@ object QzoneTabDirect : BaseSwitchHookItem() {
                 v.getLocationOnScreen(loc)
                 val bg = v.background?.javaClass?.simpleName ?: "-"
                 val lp = v.layoutParams as? ViewGroup.MarginLayoutParams
-                val mg = if (lp != null) "mT=${lp.topMargin},mB=${lp.bottomMargin},h=${lp.height}" else "mX"
+                val mg = if (lp != null) "mT=${lp.topMargin},mB=${lp.bottomMargin}" else "mX"
                 out.append("  ".repeat(depth)).append(v.javaClass.name)
                     .append(" @").append(loc[0]).append(',').append(loc[1])
                     .append(' ').append(v.width).append('x').append(v.height)
@@ -277,10 +258,7 @@ object QzoneTabDirect : BaseSwitchHookItem() {
                 if (v is ViewGroup) for (i in 0 until v.childCount) walk(v.getChildAt(i), depth + 1)
             }
             walk(activity.window.decorView, 0)
-            if (!out.contains("QzoneConciseHeaderView")) {
-                bgDumped.set(false)  // 当前不在空间页：不消耗机会，下次渲染重试
-                return
-            }
+            if (!out.contains("QzoneConciseHeaderView")) return
             java.io.File(HostInfo.hostContext.filesDir, "qfun_bg_dump.txt").writeText(out.toString())
         }
     }
