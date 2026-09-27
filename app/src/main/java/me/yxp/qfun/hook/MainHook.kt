@@ -69,7 +69,9 @@ object MainHook {
 
     private fun hookAccountChange() {
 
-        // DEXKIT-EXEMPT: 启动关键路径，先于 DexKit 扫描（账号引导钩子，首次运行缓存为空不能失败）
+        // DEXKIT-EXEMPT: 保守豁免——本钩子与全部 hook 同批在 initCache 成功后加载
+        //（首启无缓存时整个模块都不挂 hook，doFind 扫描重启后才生效），并无时序优势；
+        // 但该类是稳定名（消息库门面），且是全模块账号状态链路的根，保留硬编码
         "com.tencent.imcore.message.BaseQQMessageFacade".toClass
             .declaredConstructors.first()
             .hookAfter {

@@ -10,6 +10,7 @@ import me.yxp.qfun.utils.reflect.clazz
 import me.yxp.qfun.utils.reflect.findMethods
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.base.BaseMatcher
+import org.luckypray.dexkit.query.enums.StringMatchType
 
 @HookItemAnnotation(
     "屏蔽QQToast",
@@ -43,7 +44,7 @@ object BlockQQToast : BaseSwitchHookItem(), DexKitTask {
             searchPackages("com.tencent.mobileqq.widget")
             matcher {
                 // QQToast 自己的 MMKV/设置 key（9.3.15 双包全 dex 验证唯一）
-                usingStrings("9225_qqtoast_disable_freewindow_check")
+                usingStrings(listOf("9225_qqtoast_disable_freewindow_check"), matchType = StringMatchType.Equals)
             }
         }
     )

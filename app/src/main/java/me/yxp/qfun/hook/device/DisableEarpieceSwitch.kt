@@ -9,6 +9,7 @@ import me.yxp.qfun.utils.reflect.clazz
 import me.yxp.qfun.utils.reflect.findMethodOrNull
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.base.BaseMatcher
+import org.luckypray.dexkit.query.enums.StringMatchType
 
 @HookItemAnnotation(
     "禁用听语音时听筒来回自动切换",
@@ -24,10 +25,14 @@ object DisableEarpieceSwitch : BaseSwitchHookItem(), DexKitTask {
 
     private const val NEW_METHOD = "notifyAllDeviceStatusChanged"
 
+    // DexKit 锚点失效时的硬编码回退（9.3.15 实际走这条或 DexKit 之一）
+    private const val NEW_IMPL =
+        "com.tencent.mobileqq.qqaudio.audioplayer.impl.AudioDeviceServiceImpl"
+
     private var newImpl: Class<*>? = null
 
     override fun onInit(): Boolean {
-        newImpl = runCatching { requireClass("newImpl") }.getOrNull()
+        newImpl = runCatching { requireClass("newImpl") }.getOrNull() ?: NEW_IMPL.clazz
         return OLD_HELPER.clazz != null || newImpl != null
     }
 
@@ -59,7 +64,7 @@ object DisableEarpieceSwitch : BaseSwitchHookItem(), DexKitTask {
         "newImpl" to FindClass().apply {
             searchPackages("com.tencent.mobileqq.qqaudio.audioplayer.impl")
             matcher {
-                usingStrings("notifyAllDeviceStatusChanged: audioDeviceListener=")
+                usingStrings(listOf("notifyAllDeviceStatusChanged: audioDeviceListener="), matchType = StringMatchType.Equals)
             }
         }
     )

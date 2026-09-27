@@ -18,6 +18,7 @@ import me.yxp.qfun.utils.reflect.findMethod
 import mqq.app.AppRuntime
 import org.luckypray.dexkit.query.FindMethod
 import org.luckypray.dexkit.query.base.BaseMatcher
+import org.luckypray.dexkit.query.enums.StringMatchType
 import java.lang.reflect.Method
 import java.net.URI
 
@@ -88,7 +89,7 @@ object AntiAtAll : BaseClickableHookItem<TroopSetConfig>(TroopSetConfig.serializ
         "troopToDo" to FindMethod().apply {
             searchPackages("com.tencent.mobileqq.notification.modularize")
             matcher {
-                usingStrings("TianShuOfflineMsgCenter", "deal0x135Msg online:")
+                usingStrings(listOf("TianShuOfflineMsgCenter", "deal0x135Msg online:"), matchType = StringMatchType.Equals)
             }
         }
     )

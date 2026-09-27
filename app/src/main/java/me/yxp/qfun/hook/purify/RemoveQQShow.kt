@@ -10,6 +10,7 @@ import me.yxp.qfun.utils.qq.QQCurrentEnv
 import me.yxp.qfun.utils.reflect.toClass
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.base.BaseMatcher
+import org.luckypray.dexkit.query.enums.StringMatchType
 
 @HookItemAnnotation(
     "屏蔽QQ秀",
@@ -38,7 +39,7 @@ object RemoveQQShow : BaseSwitchHookItem(), DexKitTask {
         "aiAvatarSwitchApi" to FindClass().apply {
             searchPackages("com.tencent.mobileqq.ai.avatar")
             matcher {
-                usingStrings("[isQQShowEnable] uin==")
+                usingStrings(listOf("[isQQShowEnable] uin=="), matchType = StringMatchType.Equals)
             }
         }
     )

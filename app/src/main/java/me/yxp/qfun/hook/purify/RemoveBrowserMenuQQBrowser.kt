@@ -11,6 +11,7 @@ import me.yxp.qfun.utils.reflect.findMethod
 import me.yxp.qfun.utils.reflect.findMethodOrNull
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.base.BaseMatcher
+import org.luckypray.dexkit.query.enums.StringMatchType
 
 @HookItemAnnotation(
     "移除浏览器菜单的QQ浏览器",
@@ -53,7 +54,7 @@ object RemoveBrowserMenuQQBrowser : BaseSwitchHookItem(), DexKitTask {
             searchPackages("com.tencent.mobileqq.webview.swift")
             matcher {
                 // 菜单项自身的 jsbridge 标识（9.3.15 双包全 dex 验证唯一）
-                usingStrings("menuItem:openWithQQBrowser")
+                usingStrings(listOf("menuItem:openWithQQBrowser"), matchType = StringMatchType.Equals)
             }
         }
     )

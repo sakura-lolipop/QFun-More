@@ -21,6 +21,7 @@ import me.yxp.qfun.utils.reflect.findMethod
 import me.yxp.qfun.utils.reflect.getObject
 import org.luckypray.dexkit.query.FindMethod
 import org.luckypray.dexkit.query.base.BaseMatcher
+import org.luckypray.dexkit.query.enums.StringMatchType
 import java.lang.reflect.Method
 
 @HookItemAnnotation(
@@ -85,7 +86,7 @@ object SortEmoticonsByUsage : BaseSwitchHookItem(), DexKitTask {
         "roamReportMethod" to FindMethod().apply {
             matcher {
                 declaredClass(FavEmoRoamingHandler::class.java)
-                usingStrings("moveEmotion exception =")
+                usingStrings(listOf("moveEmotion exception ="), matchType = StringMatchType.Equals)
             }
         }
     )

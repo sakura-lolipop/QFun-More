@@ -9,6 +9,7 @@ import me.yxp.qfun.utils.reflect.findMethod
 import me.yxp.qfun.utils.reflect.toClass
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.base.BaseMatcher
+import org.luckypray.dexkit.query.enums.StringMatchType
 import java.lang.reflect.Method
 
 @HookItemAnnotation(
@@ -38,7 +39,7 @@ object UnlockLeftSwipeReply : BaseSwitchHookItem(), DexKitTask {
         "leftSwipeHelper" to FindClass().apply {
             searchPackages("com.tencent.mobileqq.aio.msglist.holder.component.leftswipearea")
             matcher {
-                usingStrings("onTouchEvent onLeftSwipeEnd")
+                usingStrings(listOf("onTouchEvent onLeftSwipeEnd"), matchType = StringMatchType.Equals)
             }
         }
     )

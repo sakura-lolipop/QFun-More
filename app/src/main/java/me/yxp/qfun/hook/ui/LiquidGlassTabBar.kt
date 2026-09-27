@@ -37,6 +37,7 @@ import me.yxp.qfun.utils.reflect.getObjectOrNull
 import me.yxp.qfun.utils.reflect.toClass
 import org.luckypray.dexkit.query.FindMethod
 import org.luckypray.dexkit.query.base.BaseMatcher
+import org.luckypray.dexkit.query.enums.StringMatchType
 import java.lang.reflect.Method
 
 @HookItemAnnotation(
@@ -260,13 +261,13 @@ object LiquidGlassTabBar : BaseSwitchHookItem(), DexKitTask {
         "needShowTabHostDivider" to FindMethod().apply {
             searchPackages("com.tencent.mobileqq.utils")
             matcher {
-                usingStrings("needShowTabHostDivider")
+                usingStrings(listOf("needShowTabHostDivider"), matchType = StringMatchType.Equals)
             }
         },
         "initTabLayoutSwitch" to FindMethod().apply {
             searchPackages("com.tencent.mobileqq.util")
             matcher {
-                usingStrings("initTabLayoutSwitch")
+                usingStrings(listOf("initTabLayoutSwitch"), matchType = StringMatchType.Equals)
             }
         }
     )

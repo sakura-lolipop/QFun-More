@@ -26,6 +26,7 @@ import me.yxp.qfun.utils.reflect.newInstanceWithArgs
 import me.yxp.qfun.utils.reflect.setObjectByType
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.base.BaseMatcher
+import org.luckypray.dexkit.query.enums.StringMatchType
 
 @HookItemAnnotation("监听消息菜单")
 object OnMenuBuild : BaseApiHookItem<MenuClickListener>(), DexKitTask {
@@ -164,7 +165,7 @@ object OnMenuBuild : BaseApiHookItem<MenuClickListener>(), DexKitTask {
         MENU_TYPE to FindClass().apply {
             searchPackages("com.tencent.qqnt.aio.menu")
             matcher {
-                usingStrings(MENU_TYPE)
+                usingStrings(listOf(MENU_TYPE), matchType = StringMatchType.Equals)
             }
         }
     )

@@ -15,6 +15,8 @@ import me.yxp.qfun.utils.reflect.toClass
 )
 object DisableBusCard : BaseSwitchHookItem() {
 
+    // DEXKIT-EXEMPT: 9.3.15 双包（base+tinker）已无 cooperation.buscard.BuscardHelper，
+    // 公交卡功能下线，onInit 恒 false 静默降级——无锚点可建，保留硬编码
     private const val BUSCARD_HELPER = "cooperation.buscard.BuscardHelper"
 
     override fun onInit(): Boolean = BUSCARD_HELPER.clazz != null

@@ -25,6 +25,7 @@ import me.yxp.qfun.utils.reflect.instance
 import me.yxp.qfun.utils.reflect.toClass
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.base.BaseMatcher
+import org.luckypray.dexkit.query.enums.StringMatchType
 import java.lang.reflect.Method
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.time.Duration.Companion.milliseconds
@@ -169,7 +170,7 @@ object MultiRecall : BaseSwitchHookItem(), DexKitTask {
         "MultiSelectUtil" to FindClass().apply {
             searchPackages("com.tencent.mobileqq.aio.msglist.holder.component.multifoward")
             matcher {
-                usingStrings("msgList")
+                usingStrings(listOf("msgList"), matchType = StringMatchType.Equals)
             }
         },
 
@@ -177,7 +178,7 @@ object MultiRecall : BaseSwitchHookItem(), DexKitTask {
             searchPackages("com.tencent.mobileqq.aio.input.multiselect")
             matcher {
                 // 埋点事件名：全 dex 4 处引用，仅 MultiSelectBarVB 在本包内（9.3.15 验证）
-                usingStrings("em_bas_aio_multi_selection_operation")
+                usingStrings(listOf("em_bas_aio_multi_selection_operation"), matchType = StringMatchType.Equals)
             }
         }
     )

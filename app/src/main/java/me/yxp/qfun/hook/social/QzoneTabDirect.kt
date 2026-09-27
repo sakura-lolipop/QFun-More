@@ -20,6 +20,7 @@ import me.yxp.qfun.utils.qq.QQCurrentEnv
 import me.yxp.qfun.utils.reflect.clazz
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.base.BaseMatcher
+import org.luckypray.dexkit.query.enums.StringMatchType
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 
@@ -283,7 +284,7 @@ object QzoneTabDirect : BaseSwitchHookItem(), DexKitTask {
             searchPackages("com.tencent.qzonehub.api.impl")
             matcher {
                 // QZone 环境初始化日志串，impl 类独有（9.3.15 双包全 dex 验证唯一）
-                usingStrings("initEnv: loadQZoneClass")
+                usingStrings(listOf("initEnv: loadQZoneClass"), matchType = StringMatchType.Equals)
             }
         },
 

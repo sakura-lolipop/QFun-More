@@ -10,6 +10,7 @@ import me.yxp.qfun.utils.reflect.clazz
 import me.yxp.qfun.utils.reflect.findMethod
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.base.BaseMatcher
+import org.luckypray.dexkit.query.enums.StringMatchType
 
 @HookItemAnnotation(
     "隐藏通讯录卡片",
@@ -46,7 +47,7 @@ object HideContactCard : BaseSwitchHookItem(), DexKitTask {
             searchPackages("com.tencent.mobileqq.newfriend")
             matcher {
                 // 全角冒号日志串（9.3.15 双包全 dex 验证唯一）
-                usingStrings("leakOptSwitch：")
+                usingStrings(listOf("leakOptSwitch："), matchType = StringMatchType.Equals)
             }
         }
     )

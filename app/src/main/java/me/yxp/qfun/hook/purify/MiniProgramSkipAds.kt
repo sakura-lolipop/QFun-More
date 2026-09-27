@@ -16,6 +16,7 @@ import me.yxp.qfun.utils.reflect.setQzFieldDeep
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.FindMethod
 import org.luckypray.dexkit.query.base.BaseMatcher
+import org.luckypray.dexkit.query.enums.StringMatchType
 import java.lang.reflect.Method
 
 @HookItemAnnotation(
@@ -137,13 +138,13 @@ object MiniProgramSkipAds : BaseSwitchHookItem(), DexKitTask {
         "mvControllerCallback" to FindMethod().apply {
             searchPackages("com.tencent.gdtad.basics.motivevideo")
             matcher {
-                usingStrings("GdtMvTitleHelper", "bar == null")
+                usingStrings(listOf("GdtMvTitleHelper", "bar == null"), matchType = StringMatchType.Equals)
             }
         },
         "motiveVideoDialog" to FindClass().apply {
             searchPackages("com.tencent.gdtad.basics.motivevideo")
             matcher {
-                usingStrings("onWindowFocusChanged() called with: hasFocus = [")
+                usingStrings(listOf("onWindowFocusChanged() called with: hasFocus = ["), matchType = StringMatchType.Equals)
             }
         },
         "videoViewController" to FindClass().apply {
@@ -151,7 +152,7 @@ object MiniProgramSkipAds : BaseSwitchHookItem(), DexKitTask {
             matcher {
                 // 视频控制器独有日志串：姊妹类 GdtMvPictureViewController 共享其余日志串，
                 // 此串在 9.3.15 双包全 dex 验证唯一
-                usingStrings("[doPauseAction] mIsVideoPlayCompleted:")
+                usingStrings(listOf("[doPauseAction] mIsVideoPlayCompleted:"), matchType = StringMatchType.Equals)
             }
         }
     )

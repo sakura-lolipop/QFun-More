@@ -11,6 +11,7 @@ import me.yxp.qfun.utils.reflect.findMethodOrNull
 import me.yxp.qfun.utils.reflect.findMethods
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.base.BaseMatcher
+import org.luckypray.dexkit.query.enums.StringMatchType
 
 @HookItemAnnotation(
     "禁用日志写入的线程",
@@ -64,13 +65,13 @@ object DisableLogWriteThread : BaseSwitchHookItem(), DexKitTask {
         "writeHandler" to FindClass().apply {
             searchPackages("com.tencent.qphone.base.util")
             matcher {
-                usingStrings("QLog clear logs")
+                usingStrings(listOf("QLog clear logs"), matchType = StringMatchType.Equals)
             }
         },
         "qLog" to FindClass().apply {
             searchPackages("com.tencent.qphone.base.util")
             matcher {
-                usingStrings("Business log tag, over 1024 !!!")
+                usingStrings(listOf("Business log tag, over 1024 !!!"), matchType = StringMatchType.Equals)
             }
         }
     )

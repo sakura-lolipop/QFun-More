@@ -12,6 +12,7 @@ import me.yxp.qfun.utils.reflect.setObjectByType
 import me.yxp.qfun.utils.reflect.toClass
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.base.BaseMatcher
+import org.luckypray.dexkit.query.enums.StringMatchType
 
 @HookItemAnnotation(
     "移除转发数量限制",
@@ -77,7 +78,7 @@ object RemoveForwardLimit : BaseSwitchHookItem(), DexKitTask {
     override fun getQueryMap(): Map<String, BaseMatcher> = mapOf(
         "ChatSelectorConfig" to FindClass().apply {
             matcher {
-                usingStrings("ChatSelectorConfig")
+                usingStrings(listOf("ChatSelectorConfig"), matchType = StringMatchType.Equals)
             }
         },
 
@@ -86,14 +87,14 @@ object RemoveForwardLimit : BaseSwitchHookItem(), DexKitTask {
         "forwardRecentActivity" to FindClass().apply {
             searchPackages("com.tencent.mobileqq.activity")
             matcher {
-                usingStrings("refreshRecentList, filter deleted friend, uin = ")
+                usingStrings(listOf("refreshRecentList, filter deleted friend, uin = "), matchType = StringMatchType.Equals)
             }
         },
 
         "forwardFriendListActivity" to FindClass().apply {
             searchPackages("com.tencent.mobileqq.activity")
             matcher {
-                usingStrings("forwardOption is null, return.")
+                usingStrings(listOf("forwardOption is null, return."), matchType = StringMatchType.Equals)
             }
         },
 
@@ -103,7 +104,7 @@ object RemoveForwardLimit : BaseSwitchHookItem(), DexKitTask {
                 // choose_* 常量与 ForwardFriendListActivity 共享，
                 // 以基类 PublicBaseFragment 区分（Friend 系继承 BaseForwardSelectionActivity）
                 superClass("com.tencent.mobileqq.fragment.PublicBaseFragment")
-                usingStrings("choose_fri_multiple_page_type")
+                usingStrings(listOf("choose_fri_multiple_page_type"), matchType = StringMatchType.Equals)
             }
         }
     )

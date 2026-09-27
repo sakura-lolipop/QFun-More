@@ -19,6 +19,7 @@ import me.yxp.qfun.utils.reflect.findMethodOrNull
 import me.yxp.qfun.utils.reflect.toClass
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.base.BaseMatcher
+import org.luckypray.dexkit.query.enums.StringMatchType
 import java.io.File
 import java.lang.reflect.Constructor
 import java.lang.reflect.Method
@@ -98,7 +99,7 @@ object FastReSend : BaseSwitchHookItem(), MenuClickListener, DexKitTask {
         "inputDraftVMDelegate" to FindClass().apply {
             searchPackages("com.tencent.mobileqq.aio.input.draft")
             matcher {
-                usingStrings("saveDrafts start editableText?.length = ")
+                usingStrings(listOf("saveDrafts start editableText?.length = "), matchType = StringMatchType.Equals)
             }
         }
     )

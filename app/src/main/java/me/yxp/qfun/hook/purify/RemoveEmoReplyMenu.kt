@@ -11,6 +11,7 @@ import me.yxp.qfun.utils.reflect.findMethod
 import me.yxp.qfun.utils.reflect.toClass
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.base.BaseMatcher
+import org.luckypray.dexkit.query.enums.StringMatchType
 import java.lang.reflect.Method
 
 @HookItemAnnotation(
@@ -52,13 +53,13 @@ object RemoveEmoReplyMenu : BaseSwitchHookItem(), DexKitTask {
         "msgTailComponent" to FindClass().apply {
             searchPackages("com.tencent.mobileqq.aio.msglist.holder.component.msgtail")
             matcher {
-                usingStrings("not in EmoReplyWhiteList")
+                usingStrings(listOf("not in EmoReplyWhiteList"), matchType = StringMatchType.Equals)
             }
         },
         "emoReplyMenuApi" to FindClass().apply {
             searchPackages("com.tencent.qqnt.aio.api.impl")
             matcher {
-                usingStrings("[getSeparateEmoReplyMenuView] context is null")
+                usingStrings(listOf("[getSeparateEmoReplyMenuView] context is null"), matchType = StringMatchType.Equals)
             }
         }
     )

@@ -18,6 +18,7 @@ import me.yxp.qfun.utils.json.replaceProtoValue
 import me.yxp.qfun.utils.reflect.ClassUtils
 import me.yxp.qfun.utils.reflect.ReflectCache
 import me.yxp.qfun.utils.reflect.callMethod
+import me.yxp.qfun.utils.reflect.clazz
 import me.yxp.qfun.utils.dexkit.DexKitTask
 import me.yxp.qfun.utils.reflect.findMethod
 import me.yxp.qfun.utils.reflect.findMethods
@@ -26,6 +27,7 @@ import me.yxp.qfun.utils.reflect.setObject
 import me.yxp.qfun.utils.reflect.toClass
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.base.BaseMatcher
+import org.luckypray.dexkit.query.enums.StringMatchType
 import java.lang.reflect.Method
 
 @HookItemAnnotation(
@@ -66,6 +68,7 @@ object ShowDownloadTimes : BaseSwitchHookItem(), DexKitTask {
         }
 
         groupFileListRepo = runCatching { requireClass("groupFileListRepo") }.getOrNull()
+            ?: "group_file.group_file_common.repo.GroupFileListRepo".clazz
         groupFileListRepo
             ?.findMethods { paramTypes(string, null, "kotlin.coroutines.Continuation".toClass) }
             ?.filter { it.parameterTypes[1].isMessage }
@@ -160,7 +163,7 @@ object ShowDownloadTimes : BaseSwitchHookItem(), DexKitTask {
         "groupFileListRepo" to FindClass().apply {
             searchPackages("group_file.group_file_common.repo")
             matcher {
-                usingStrings("[syncExtraInfoV2]: start", "[syncExtraInfoV2]: end, count=")
+                usingStrings(listOf("[syncExtraInfoV2]: start", "[syncExtraInfoV2]: end, count="), matchType = StringMatchType.Equals)
             }
         }
     )

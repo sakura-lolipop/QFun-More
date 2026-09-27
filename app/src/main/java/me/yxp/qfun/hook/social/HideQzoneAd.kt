@@ -12,6 +12,7 @@ import me.yxp.qfun.utils.log.LogUtils
 import me.yxp.qfun.utils.reflect.clazz
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.base.BaseMatcher
+import org.luckypray.dexkit.query.enums.StringMatchType
 
 @HookItemAnnotation(
     "隐藏QQ空间广告",
@@ -120,7 +121,7 @@ object HideQzoneAd : BaseSwitchHookItem(), DexKitTask {
             searchPackages("com.qzone.reborn.feedx.itemview.ad")
             matcher {
                 // 基类自身只引用 Kotlin 判空助手串；两者组合在包内唯一（9.3.15 双包验证）
-                usingStrings("getPresenterList(...)", "getActivityFromView(...)")
+                usingStrings(listOf("getPresenterList(...)", "getActivityFromView(...)"), matchType = StringMatchType.Equals)
             }
         },
 
@@ -128,7 +129,7 @@ object HideQzoneAd : BaseSwitchHookItem(), DexKitTask {
             searchPackages("com.qzone.reborn.feedpro.itemview.ad")
             matcher {
                 // 广告媒体容器字段名判空串（9.3.15 双包全 dex 验证唯一）
-                usingStrings("mBottomOperateContainer", "mAdContainer")
+                usingStrings(listOf("mBottomOperateContainer", "mAdContainer"), matchType = StringMatchType.Equals)
             }
         },
 
@@ -136,14 +137,14 @@ object HideQzoneAd : BaseSwitchHookItem(), DexKitTask {
             searchPackages("com.qzone.reborn.feedpro.itemview")
             matcher {
                 // 类自身的 getLogTag() 常量（9.3.15 双包全 dex 验证唯一）
-                usingStrings("QzoneFeedProGeneralBigCardItemView")
+                usingStrings(listOf("QzoneFeedProGeneralBigCardItemView"), matchType = StringMatchType.Equals)
             }
         },
 
         "adProForwardMix" to FindClass().apply {
             searchPackages("com.qzone.reborn.feedpro.itemview")
             matcher {
-                usingStrings("QZoneAdFeedProForwardMixPicVideoItemView")
+                usingStrings(listOf("QZoneAdFeedProForwardMixPicVideoItemView"), matchType = StringMatchType.Equals)
             }
         },
 
@@ -152,14 +153,14 @@ object HideQzoneAd : BaseSwitchHookItem(), DexKitTask {
             matcher {
                 // 微信店铺 logo 绑定日志串；姊妹类 QZoneFeedProDetailCommentAdItemView
                 // 共享 exposure 串故弃用，此串唯一（9.3.15 双包验证）
-                usingStrings("bindWxStoreLogo() wxLogoUrl=")
+                usingStrings(listOf("bindWxStoreLogo() wxLogoUrl="), matchType = StringMatchType.Equals)
             }
         },
 
         "adRewardFeed" to FindClass().apply {
             searchPackages("com.qzone.reborn.feedx.itemview.ad")
             matcher {
-                usingStrings("QZoneAdRewardFeedItemView")
+                usingStrings(listOf("QZoneAdRewardFeedItemView"), matchType = StringMatchType.Equals)
             }
         },
 
@@ -167,7 +168,7 @@ object HideQzoneAd : BaseSwitchHookItem(), DexKitTask {
             searchPackages("com.qzone.proxy.feedcomponent.model.gdt")
             matcher {
                 // GDT 扩展信息解析失败日志串（9.3.15 双包全 dex 验证唯一）
-                usingStrings("[getAdFirstCategory] error, e:")
+                usingStrings(listOf("[getAdFirstCategory] error, e:"), matchType = StringMatchType.Equals)
             }
         }
     )

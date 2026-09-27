@@ -7,8 +7,10 @@ import me.yxp.qfun.hook.base.BaseSwitchHookItem
 import me.yxp.qfun.utils.dexkit.DexKitTask
 import me.yxp.qfun.utils.qq.HostInfo
 import me.yxp.qfun.utils.reflect.findField
+import me.yxp.qfun.utils.reflect.toClass
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.base.BaseMatcher
+import org.luckypray.dexkit.query.enums.StringMatchType
 
 @HookItemAnnotation(
     "下载重定向",
@@ -27,6 +29,7 @@ object DownloadRedirect : BaseSwitchHookItem(), DexKitTask {
 
     override fun onInit(): Boolean {
         appConstants = runCatching { requireClass("appConstants") }.getOrNull()
+            ?: "com.tencent.mobileqq.app.AppConstants".toClass
         return appConstants != null
     }
 
@@ -44,8 +47,11 @@ object DownloadRedirect : BaseSwitchHookItem(), DexKitTask {
             searchPackages("com.tencent.mobileqq.app")
             matcher {
                 usingStrings(
-                    "QQEditPic/OriginPic/",
-                    "/Tencent/QQ_Secretfile/"
+                    listOf(
+                        "QQEditPic/OriginPic/",
+                        "/Tencent/QQ_Secretfile/"
+                    ),
+                    matchType = StringMatchType.Equals
                 )
             }
         }

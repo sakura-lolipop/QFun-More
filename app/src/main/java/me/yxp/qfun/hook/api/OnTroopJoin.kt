@@ -20,6 +20,7 @@ import me.yxp.qfun.utils.reflect.toClass
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.FindMethod
 import org.luckypray.dexkit.query.base.BaseMatcher
+import org.luckypray.dexkit.query.enums.StringMatchType
 import kotlin.coroutines.resume
 
 @HookItemAnnotation("监听用户入群")
@@ -83,7 +84,7 @@ object OnTroopJoin : BaseApiHookItem<TroopJoinListener>(), DexKitTask {
                     declaredClass(TroopOnlinePushHandler::class.java)
                     returnType(Void.TYPE)
                     paramTypes(clazz, clazz, clazz)
-                    usingStrings("handleMemberAdd addMemberUin:")
+                    usingStrings(listOf("handleMemberAdd addMemberUin:"), matchType = StringMatchType.Equals)
                 }
             },
 
@@ -91,7 +92,7 @@ object OnTroopJoin : BaseApiHookItem<TroopJoinListener>(), DexKitTask {
                 searchPackages("com.tencent.qqnt.push.processor")
                 matcher {
                     // 入群推送日志串，该 processor 独有（9.3.15 双包全 dex 验证唯一）
-                    usingStrings("onPushReceive: byte troopUin=")
+                    usingStrings(listOf("onPushReceive: byte troopUin="), matchType = StringMatchType.Equals)
                 }
             }
         )

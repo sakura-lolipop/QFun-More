@@ -10,6 +10,7 @@ import me.yxp.qfun.utils.reflect.clazz
 import me.yxp.qfun.utils.reflect.findMethods
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.base.BaseMatcher
+import org.luckypray.dexkit.query.enums.StringMatchType
 
 @HookItemAnnotation(
     "净化主页横幅新年广告",
@@ -74,20 +75,20 @@ object PurifyNewYearBanner : BaseSwitchHookItem(), DexKitTask {
         "springTabBannerModule" to FindClass().apply {
             searchPackages("com.tencent.mobileqq.springhb.entry")
             matcher {
-                usingStrings("onMsgTabBannerShow, data = ")
+                usingStrings(listOf("onMsgTabBannerShow, data = "), matchType = StringMatchType.Equals)
             }
         },
         // toString 前缀串；"MsgTabBannerData{id='" 会同命中 MsgTabTitleIconData，故用独有字段串
         "msgTabBannerData" to FindClass().apply {
             searchPackages("com.tencent.mobileqq.springhb.entry")
             matcher {
-                usingStrings("', liuhaiBgUrl='")
+                usingStrings(listOf("', liuhaiBgUrl='"), matchType = StringMatchType.Equals)
             }
         },
         "vasADBannerProcessor" to FindClass().apply {
             searchPackages("com.tencent.mobileqq.activity.recent")
             matcher {
-                usingStrings("[Diag-715] handleCustomBanner empty, hide banner")
+                usingStrings(listOf("[Diag-715] handleCustomBanner empty, hide banner"), matchType = StringMatchType.Equals)
             }
         }
     )

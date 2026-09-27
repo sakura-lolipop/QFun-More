@@ -10,6 +10,7 @@ import me.yxp.qfun.utils.reflect.clazz
 import me.yxp.qfun.utils.reflect.findMethod
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.base.BaseMatcher
+import org.luckypray.dexkit.query.enums.StringMatchType
 
 @HookItemAnnotation(
     "隐藏好友互动标识",
@@ -45,7 +46,7 @@ object HideFriendInteractIdentify : BaseSwitchHookItem(), DexKitTask {
         "intimateComponent" to FindClass().apply {
             searchPackages("com.tencent.mobileqq.profilecard")
             matcher {
-                usingStrings("makeOrRefreshUI fail, card is null")
+                usingStrings(listOf("makeOrRefreshUI fail, card is null"), matchType = StringMatchType.Equals)
             }
         }
     )

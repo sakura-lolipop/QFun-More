@@ -4,6 +4,7 @@ import me.yxp.qfun.utils.dexkit.DexKitTask
 import me.yxp.qfun.utils.reflect.findMethod
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.base.BaseMatcher
+import org.luckypray.dexkit.query.enums.StringMatchType
 import java.lang.reflect.Modifier
 
 object MessageTool : DexKitTask {
@@ -47,7 +48,7 @@ object MessageTool : DexKitTask {
         "Message" to FindClass().apply {
             searchPackages("pbandk")
             matcher {
-                usingStrings("Not yet implemented")
+                usingStrings(listOf("Not yet implemented"), matchType = StringMatchType.Equals)
             }
         },
 

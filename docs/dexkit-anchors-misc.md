@@ -48,3 +48,12 @@
   均为 QQ 自家日志/常量串，QQ 大版本更新可能改动；DexKitFinder 用 singleOrNull，多命中/未命中均为静默不缓存 → 功能优雅失效，需按本档案重找锚点。
 - 启动时序：switch 类 hook 的 onInit 仅在 `DexKitCache.initCache()` 成功后执行（Startup.kt），
   首次运行无缓存时走 doFind+重启，故业务期 onInit 依赖缓存是安全的；仅 §2 的启动关键路径豁免。
+
+## 5. 对抗审查修正（2026-09-27）
+
+- P1-2 兜底恢复：DownloadRedirect / RememberLastRead（vmMessenger + navigateBySeqEvent）/
+  DisableEarpieceSwitch（NEW_IMPL）/ ShowDownloadTimes 四文件补回 `?: 原硬编码` 降级链，
+  与全仓统一范式一致（此前锚点失效=功能静默禁用，现恢复为回退硬编码）。
+- RememberLastRead 时序备注：navigateBySeqEvent 由原 hookAfter 内逐条消息解析改为
+  onInit 一次解析（缺类时原=每条消息抛错刷日志，现=功能关闭），失败模式改善，非零改动。
+- DisableBusCard 补 DEXKIT-EXEMPT 标注（9.3.15 双包已无 buscard 类，功能下线恒降级）。

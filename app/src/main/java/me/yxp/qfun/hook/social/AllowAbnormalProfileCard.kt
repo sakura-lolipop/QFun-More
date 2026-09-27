@@ -12,6 +12,7 @@ import me.yxp.qfun.utils.reflect.getQzFieldDeepOrNull
 import me.yxp.qfun.utils.reflect.setQzFieldDeep
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.base.BaseMatcher
+import org.luckypray.dexkit.query.enums.StringMatchType
 import java.lang.reflect.Method
 
 @HookItemAnnotation(
@@ -87,8 +88,11 @@ object AllowAbnormalProfileCard : BaseSwitchHookItem(), DexKitTask {
             matcher {
                 // 该服务实现类独有的取卡日志串（9.3.15 双包全 dex 验证唯一）
                 usingStrings(
-                    "getProfileCard from db. uin=%s card=%s",
-                    "getProfileCard from new. uin=%s card=%s"
+                    listOf(
+                        "getProfileCard from db. uin=%s card=%s",
+                        "getProfileCard from new. uin=%s card=%s"
+                    ),
+                    matchType = StringMatchType.Equals
                 )
             }
         },
@@ -98,8 +102,11 @@ object AllowAbnormalProfileCard : BaseSwitchHookItem(), DexKitTask {
             matcher {
                 // 协议处理层风控清码日志串（9.3.15 双包全 dex 验证唯一）
                 usingStrings(
-                    "onProcessProfileCard, get card null",
-                    "onProcessProfileCard, card isForbidAccount="
+                    listOf(
+                        "onProcessProfileCard, get card null",
+                        "onProcessProfileCard, card isForbidAccount="
+                    ),
+                    matchType = StringMatchType.Equals
                 )
             }
         }

@@ -20,6 +20,7 @@ import me.yxp.qfun.utils.reflect.findMethod
 import me.yxp.qfun.utils.reflect.instance
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.base.BaseMatcher
+import org.luckypray.dexkit.query.enums.StringMatchType
 import java.io.File
 import java.lang.reflect.Method
 
@@ -117,7 +118,7 @@ object MixedEmoAndText : BaseSwitchHookItem(), SendMsgListener, DexKitTask {
         "ImageUtils" to FindClass().apply {
             searchPackages("com.tencent.mobileqq.aio.input.fullscreen")
             matcher {
-                usingStrings("sampleSize")
+                usingStrings(listOf("sampleSize"), matchType = StringMatchType.Equals)
             }
         }
     )

@@ -13,6 +13,7 @@ import me.yxp.qfun.utils.reflect.setQzFieldDeep
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.FindMethod
 import org.luckypray.dexkit.query.base.BaseMatcher
+import org.luckypray.dexkit.query.enums.StringMatchType
 import java.lang.reflect.Method
 
 @HookItemAnnotation(
@@ -99,7 +100,7 @@ object DisablePullDownMiniApp : BaseSwitchHookItem(), DexKitTask {
             matcher {
                 // 'finishTwoLevel(...)' 在该包内仅两个 header 类引用（9.3.15 验证），
                 // 再以仅 New 声明的框架回调 onConfigurationChanged 区分 New/旧版
-                usingStrings("finishTwoLevel(...)")
+                usingStrings(listOf("finishTwoLevel(...)"), matchType = StringMatchType.Equals)
                 methods {
                     add { name("onConfigurationChanged") }
                 }
@@ -109,7 +110,7 @@ object DisablePullDownMiniApp : BaseSwitchHookItem(), DexKitTask {
         "initMiniAppEntry" to FindMethod().apply {
             searchPackages("com.tencent.mobileqq.activity.home")
             matcher {
-                usingStrings("init Mini App, cost=")
+                usingStrings(listOf("init Mini App, cost="), matchType = StringMatchType.Equals)
             }
         }
     )

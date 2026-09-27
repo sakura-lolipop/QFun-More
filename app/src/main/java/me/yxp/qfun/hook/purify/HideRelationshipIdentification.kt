@@ -13,6 +13,7 @@ import me.yxp.qfun.utils.reflect.findMethod
 import me.yxp.qfun.utils.reflect.getObjectByTypeOrNull
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.base.BaseMatcher
+import org.luckypray.dexkit.query.enums.StringMatchType
 
 @HookItemAnnotation(
     "陌生人资料卡你们的关系标识",
@@ -69,7 +70,7 @@ object HideRelationshipIdentification : BaseSwitchHookItem(), DexKitTask {
         "inStepComponent" to FindClass().apply {
             searchPackages("com.tencent.mobileqq.profilecard")
             matcher {
-                usingStrings("bindCardData fail, card or listview is null")
+                usingStrings(listOf("bindCardData fail, card or listview is null"), matchType = StringMatchType.Equals)
             }
         },
         // ProfileCardInfo 自身无字符串常量，按方法组合定位（9.3.15 双包验证唯一）

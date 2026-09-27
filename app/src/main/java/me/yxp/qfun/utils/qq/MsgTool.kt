@@ -17,6 +17,7 @@ import me.yxp.qfun.utils.reflect.findMethod
 import me.yxp.qfun.utils.reflect.findMethodOrNull
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.base.BaseMatcher
+import org.luckypray.dexkit.query.enums.StringMatchType
 import java.io.File
 
 object MsgTool : DexKitTask {
@@ -320,7 +321,7 @@ object MsgTool : DexKitTask {
         "json" to FindClass().apply {
             searchPackages("com.tencent.qqnt.msg")
             matcher {
-                usingStrings("ArkMsgModel", "toAppXml fail, metaList, err=")
+                usingStrings(listOf("ArkMsgModel", "toAppXml fail, metaList, err="), matchType = StringMatchType.Equals)
             }
         }
     )

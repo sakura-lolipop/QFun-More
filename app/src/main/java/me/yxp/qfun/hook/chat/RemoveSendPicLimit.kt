@@ -12,6 +12,7 @@ import me.yxp.qfun.utils.reflect.clazz
 import me.yxp.qfun.utils.reflect.findMethod
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.base.BaseMatcher
+import org.luckypray.dexkit.query.enums.StringMatchType
 
 @HookItemAnnotation(
     "去除发送图片限制",
@@ -65,7 +66,7 @@ object RemoveSendPicLimit : BaseSwitchHookItem(), DexKitTask {
             searchPackages("com.tencent.qqnt.qbasealbum.base.model")
             matcher {
                 // 点击处理器自己的 MMKV key：全 dex 5 处引用，仅目标类在 base.model 包内（9.3.15 验证）
-                usingStrings("key_show_toast_interval")
+                usingStrings(listOf("key_show_toast_interval"), matchType = StringMatchType.Equals)
             }
         }
     )

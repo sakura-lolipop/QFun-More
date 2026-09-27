@@ -40,17 +40,26 @@ DexKit 按**语义特征**（字符串锚点、方法签名、继承关系）在
 
 ## 4. 已知锚点档案（9.3.15 验证）
 
-> 2026-09-27 全量迁移完成：45 文件、53 个锚点（chat 7 / purify 24 / social+api 17 / misc 5），
+> 2026-09-27 全量迁移完成：46 文件、55 个锚点（chat 7 / purify 24 / social+api 19 / misc 5），
 > 全部走 `runCatching { requireClass(key) }.getOrNull() ?: 原硬编码` 降级链——
 > 缓存未命中（首次启动未扫描 / QQ 升级锚点失效）时行为与迁移前逐字节一致，不会误 hook。
+>
+> **对抗审查结论（红队两轮：diff 猎 bug + 全仓漏迁扫荡）**：
+> - 无 P0；hook 行为冻结、缓存 key 一致性、KSP 注册、豁免真实性全部独立复验成立；
+> - `usingStrings` 在 DexKit 2.2.0 默认 **Contains（子串）**——已全仓显式加
+>   `matchType = StringMatchType.Equals` 对齐验证口径（运行时语义 = 档案口径）；
+> - 首启时序定论：`Startup.kt` 以 `initCache()` 成功门控 `loadHook()`——
+>   首次启动所有 hook 都不加载，doFind 扫描入缓存后自动重启，第二次启动起正常；
+>   此为迁移前既有设计。多进程共享缓存文件读写非原子（既有，重启自愈）。
+>
 > 分目录锚点明细（含唯一性验证证据与弃用候选记录）：
 > - `docs/dexkit-anchors-chat.md`
 > - `docs/dexkit-anchors-purify.md`
 > - `docs/dexkit-anchors-social-api.md`
 > - `docs/dexkit-anchors-misc.md`
-> 豁免项（DEXKIT-EXEMPT）三类：启动关键路径（MainHook/DisableHotPatch，先于 DexKit 扫描）、
+> 豁免项（DEXKIT-EXEMPT）三类：启动关键路径（MainHook/DisableHotPatch）、
 > 双包验证不存在的失效类、运行时视图树检查/资源 ID/协议串（非 dex 目标）。
-> QQ 升级后复核脚本：`qstory/qstory_menu_analysis/dexkit_migration/verify_*.py`。
+> QQ 升级后复核脚本：`qstory/qstory_menu_analysis/dexkit_migration/verify_*.py`（红队脚本在 review/、sweep/）。
 
 | 目标 | 锚点 | 说明 |
 |---|---|---|

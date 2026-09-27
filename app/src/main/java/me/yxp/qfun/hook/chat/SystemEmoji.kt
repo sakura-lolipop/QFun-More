@@ -9,6 +9,7 @@ import me.yxp.qfun.utils.reflect.findMethod
 import me.yxp.qfun.utils.reflect.toClass
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.base.BaseMatcher
+import org.luckypray.dexkit.query.enums.StringMatchType
 
 @HookItemAnnotation(
     "强制使用系统Emoji",
@@ -27,7 +28,7 @@ object SystemEmoji : BaseSwitchHookItem(), DexKitTask {
         "emotcationConstants" to FindClass().apply {
             searchPackages("com.tencent.mobileqq.text")
             matcher {
-                usingStrings("setEmojiMap EMOJI_MAP size=")
+                usingStrings(listOf("setEmojiMap EMOJI_MAP size="), matchType = StringMatchType.Equals)
             }
         }
     )

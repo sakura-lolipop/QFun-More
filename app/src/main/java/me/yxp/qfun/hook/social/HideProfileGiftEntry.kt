@@ -15,6 +15,7 @@ import me.yxp.qfun.utils.reflect.clazz
 import me.yxp.qfun.utils.reflect.findMethodOrNull
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.base.BaseMatcher
+import org.luckypray.dexkit.query.enums.StringMatchType
 import java.lang.reflect.Method
 
 @HookItemAnnotation(
@@ -116,7 +117,7 @@ object HideProfileGiftEntry : BaseSwitchHookItem(), DexKitTask {
             searchPackages("com.tencent.mobileqq.profilecard.base.container")
             matcher {
                 // 送礼物入口 H5 跳转的 MMKV/配置 key，该容器类独有引用（9.3.15 双包全 dex 验证唯一）
-                usingStrings("give_gift_button_in_profile_url")
+                usingStrings(listOf("give_gift_button_in_profile_url"), matchType = StringMatchType.Equals)
             }
         }
     )

@@ -10,6 +10,7 @@ import me.yxp.qfun.utils.reflect.findMethods
 import me.yxp.qfun.utils.reflect.toClass
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.base.BaseMatcher
+import org.luckypray.dexkit.query.enums.StringMatchType
 
 @HookItemAnnotation(
     "屏蔽AIO动画特效",
@@ -35,7 +36,7 @@ object BlockAIOEffects : BaseSwitchHookItem(), DexKitTask {
         "aioAnimationContainer" to FindClass().apply {
             searchPackages("com.tencent.mobileqq.aio.animation")
             matcher {
-                usingStrings("[concurrentStartAnimation] create new animator, type: ")
+                usingStrings(listOf("[concurrentStartAnimation] create new animator, type: "), matchType = StringMatchType.Equals)
             }
         }
     )

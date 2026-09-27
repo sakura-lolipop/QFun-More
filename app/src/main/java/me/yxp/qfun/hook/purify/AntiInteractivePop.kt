@@ -11,6 +11,7 @@ import me.yxp.qfun.utils.reflect.findMethod
 import me.yxp.qfun.utils.reflect.toClass
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.base.BaseMatcher
+import org.luckypray.dexkit.query.enums.StringMatchType
 
 @HookItemAnnotation(
     "屏蔽弹出动画",
@@ -44,13 +45,13 @@ object AntiInteractivePop : BaseSwitchHookItem(), DexKitTask {
         "interactivePopManager" to FindClass().apply {
             searchPackages("com.tencent.mobileqq.springhb.interactive")
             matcher {
-                usingStrings("showInteractivePop playFile isNull!!")
+                usingStrings(listOf("showInteractivePop playFile isNull!!"), matchType = StringMatchType.Equals)
             }
         },
         "pagEasterEggPopManager" to FindClass().apply {
             searchPackages("com.tencent.mobileqq.aio.animation.pag")
             matcher {
-                usingStrings("showPop playFile isNull")
+                usingStrings(listOf("showPop playFile isNull"), matchType = StringMatchType.Equals)
             }
         }
     )

@@ -11,6 +11,7 @@ import me.yxp.qfun.utils.reflect.findMethod
 import me.yxp.qfun.utils.reflect.getObjectOrNull
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.base.BaseMatcher
+import org.luckypray.dexkit.query.enums.StringMatchType
 
 @HookItemAnnotation(
     "删除QQ表情底栏中的AI选项",
@@ -55,7 +56,7 @@ object RemoveEmoPanelAITab : BaseSwitchHookItem(), DexKitTask {
             searchPackages("com.tencent.mobileqq.emoticonview")
             matcher {
                 // 类自引用 TAG 串全 dex 唯一，再叠加拼错的 "OnDestory" 日志串收紧
-                usingStrings("EmoticonPanelController", "OnDestory")
+                usingStrings(listOf("EmoticonPanelController", "OnDestory"), matchType = StringMatchType.Equals)
             }
         }
     )

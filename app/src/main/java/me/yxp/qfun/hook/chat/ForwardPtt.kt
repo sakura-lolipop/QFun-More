@@ -30,6 +30,7 @@ import me.yxp.qfun.utils.reflect.toClass
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.FindMethod
 import org.luckypray.dexkit.query.base.BaseMatcher
+import org.luckypray.dexkit.query.enums.StringMatchType
 import java.lang.reflect.Method
 import java.util.concurrent.CopyOnWriteArrayList
 
@@ -217,14 +218,14 @@ object ForwardPtt : BaseSwitchHookItem(), DexKitTask {
         "ForwardMenuItem" to FindClass().apply {
             searchPackages("com.tencent.qqnt.aio.menu")
             matcher {
-                usingStrings("ForwardMenuItem")
+                usingStrings(listOf("ForwardMenuItem"), matchType = StringMatchType.Equals)
             }
         },
 
         "AIOForwardHandler" to FindClass().apply {
             searchPackages("com.tencent.mobileqq.sharepanel.forward.handler")
             matcher {
-                usingStrings("fixAIAssistantForwardContacts: prepareForwardSession=")
+                usingStrings(listOf("fixAIAssistantForwardContacts: prepareForwardSession="), matchType = StringMatchType.Equals)
             }
         },
 
@@ -232,7 +233,7 @@ object ForwardPtt : BaseSwitchHookItem(), DexKitTask {
             matcher {
                 declaredClass(NtMsgForwardUtils::class.java)
                 returnType(Boolean::class.java)
-                usingStrings("startForwardMsgV2 origin_msg_type=")
+                usingStrings(listOf("startForwardMsgV2 origin_msg_type="), matchType = StringMatchType.Equals)
             }
         }
     )

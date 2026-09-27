@@ -10,6 +10,7 @@ import me.yxp.qfun.utils.reflect.clazz
 import me.yxp.qfun.utils.reflect.findMethods
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.base.BaseMatcher
+import org.luckypray.dexkit.query.enums.StringMatchType
 
 @HookItemAnnotation(
     "禁用崩溃日志上报",
@@ -64,7 +65,7 @@ object DisableCrashReport : BaseSwitchHookItem(), DexKitTask {
         "crashManager" to FindClass().apply {
             searchPackages("com.tencent.qqperf.monitor.crash")
             matcher {
-                usingStrings("CrashReport init finished.")
+                usingStrings(listOf("CrashReport init finished."), matchType = StringMatchType.Equals)
             }
         }
     )

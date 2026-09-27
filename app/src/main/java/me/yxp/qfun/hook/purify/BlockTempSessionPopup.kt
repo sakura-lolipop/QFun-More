@@ -10,6 +10,7 @@ import me.yxp.qfun.utils.reflect.clazz
 import me.yxp.qfun.utils.reflect.findMethods
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.base.BaseMatcher
+import org.luckypray.dexkit.query.enums.StringMatchType
 
 @HookItemAnnotation(
     "屏蔽临时会话弹窗",
@@ -42,7 +43,7 @@ object BlockTempSessionPopup : BaseSwitchHookItem(), DexKitTask {
         "tempMsgManager" to FindClass().apply {
             searchPackages("com.tencent.mobileqq.managers")
             matcher {
-                usingStrings("can't tempMsgInfo, insert a new tempMsgInfo! type=")
+                usingStrings(listOf("can't tempMsgInfo, insert a new tempMsgInfo! type="), matchType = StringMatchType.Equals)
             }
         }
     )

@@ -23,6 +23,7 @@ import me.yxp.qfun.utils.reflect.findMethod
 import me.yxp.qfun.utils.reflect.toClass
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.base.BaseMatcher
+import org.luckypray.dexkit.query.enums.StringMatchType
 import java.lang.reflect.Method
 
 @HookItemAnnotation(
@@ -97,7 +98,7 @@ object MultiOnlineNudge : BaseSwitchHookItem(), DexKitTask {
             searchPackages("com.tencent.mobileqq.onlinestatus.proto")
             matcher {
                 // 在线状态拍一拍发送日志串（9.3.15 双包全 dex 验证唯一）
-                usingStrings("[sendOnlineFriendNudge] sent, targetUin=")
+                usingStrings(listOf("[sendOnlineFriendNudge] sent, targetUin="), matchType = StringMatchType.Equals)
             }
         }
     )

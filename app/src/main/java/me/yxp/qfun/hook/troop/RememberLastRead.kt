@@ -17,8 +17,10 @@ import me.yxp.qfun.utils.io.ObjectStore
 import me.yxp.qfun.utils.qq.QQCurrentEnv
 import me.yxp.qfun.utils.reflect.findMethod
 import me.yxp.qfun.utils.reflect.newInstanceWithArgs
+import me.yxp.qfun.utils.reflect.toClass
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.base.BaseMatcher
+import org.luckypray.dexkit.query.enums.StringMatchType
 import java.lang.reflect.Constructor
 import java.lang.reflect.Method
 
@@ -47,9 +49,10 @@ object RememberLastRead : BaseSwitchHookItem(), DexKitTask, AIOViewUpdateListene
 
     override fun onInit(): Boolean {
 
-        val vmMessenger = runCatching { requireClass("vmMessenger") }.getOrNull() ?: return false
+        val vmMessenger = runCatching { requireClass("vmMessenger") }.getOrNull()
+            ?: "com.tencent.mvi.base.route.VMMessenger".toClass
         navigateBySeqEvent = runCatching { requireClass("navigateBySeqEvent") }.getOrNull()
-            ?: return false
+            ?: $$"com.tencent.mobileqq.aio.event.MsgNavigationEvent$NavigateBySeqEvent".toClass
         cotr = vmMessenger.constructors.single {
             it.parameterCount == 2 && it.parameterTypes.contains(Boolean::class.javaPrimitiveType)
         }
@@ -91,13 +94,13 @@ object RememberLastRead : BaseSwitchHookItem(), DexKitTask, AIOViewUpdateListene
         "vmMessenger" to FindClass().apply {
             searchPackages("com.tencent.mvi.base.route")
             matcher {
-                usingStrings("sendR must be access at Main Thread")
+                usingStrings(listOf("sendR must be access at Main Thread"), matchType = StringMatchType.Equals)
             }
         },
         "navigateBySeqEvent" to FindClass().apply {
             searchPackages("com.tencent.mobileqq.aio.event")
             matcher {
-                usingStrings("NavigateBySeqEvent(source=")
+                usingStrings(listOf("NavigateBySeqEvent(source="), matchType = StringMatchType.Equals)
             }
         }
     )

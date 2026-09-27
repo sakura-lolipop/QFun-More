@@ -22,6 +22,7 @@ import me.yxp.qfun.utils.reflect.newInstanceWithArgs
 import me.yxp.qfun.utils.reflect.toClass
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.base.BaseMatcher
+import org.luckypray.dexkit.query.enums.StringMatchType
 import java.lang.reflect.Proxy
 
 @HookItemAnnotation("QQ设置入口")
@@ -171,14 +172,14 @@ object QQSettingInject : BaseApiHookItem<Listener>(), DexKitTask {
         val item = if (HostInfo.isQQ && HostInfo.versionCode >= 14498) {
             FindClass().apply {
                 matcher {
-                    usingStrings("context", "leftText", "SimpleItemProcessor")
+                    usingStrings(listOf("context", "leftText", "SimpleItemProcessor"), matchType = StringMatchType.Equals)
                 }
             }
         } else {
             FindClass().apply {
                 searchPackages("com.tencent.mobileqq.setting.processor")
                 matcher {
-                    usingStrings("context", "leftText")
+                    usingStrings(listOf("context", "leftText"), matchType = StringMatchType.Equals)
                 }
             }
         }

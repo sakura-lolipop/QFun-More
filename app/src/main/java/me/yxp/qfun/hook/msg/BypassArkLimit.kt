@@ -9,6 +9,7 @@ import me.yxp.qfun.utils.qq.HostInfo
 import me.yxp.qfun.utils.reflect.findMethod
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.base.BaseMatcher
+import org.luckypray.dexkit.query.enums.StringMatchType
 import java.lang.reflect.Method
 
 @HookItemAnnotation(
@@ -39,7 +40,7 @@ object BypassArkLimit : BaseSwitchHookItem(), DexKitTask {
         "ArkConfigModel" to FindClass().apply {
             searchPackages("com.tencent.mobileqq.aio.msglist.holder.component.ark")
             matcher {
-                usingStrings("updateTimArkClickWhiteList")
+                usingStrings(listOf("updateTimArkClickWhiteList"), matchType = StringMatchType.Equals)
             }
         }
     )

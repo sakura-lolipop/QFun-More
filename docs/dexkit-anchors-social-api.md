@@ -66,3 +66,14 @@ OnTroopJoin/handleJoin（declaredClass 直引用 + "handleMemberAdd addMemberUin
   feedx/widget 树的双声明集合，必要时补 usingNumbers（灰色条 #dedddc 若改为常量内联）。
 - 多命中/未命中时 Finder 用 singleOrNull() 静默不缓存 → 全部功能自动回退硬编码，不会误 hook；
   装机后功能失效先查 CacheMap_<QQ版本>_<模块版本> 是否生成。
+
+## 5. 对抗审查补迁（2026-09-27）
+
+RemoveFavPreviewLimit（全仓扫荡发现的原漏网项，com.qqfav 前缀不在原盘点重点包路径）：
+
+| 缓存key | 原硬编码 | 锚点（双包验证 UNIQUE） |
+|---|---|---|
+| RemoveFavPreviewLimit->favoriteService | com.qqfav.FavoriteService | usingStrings `"addNewFavoriteInternal|invalid arg"` + searchPackages com.qqfav |
+| RemoveFavPreviewLimit->favoriteData | com.qqfav.data.FavoriteData | usingStrings `"checkRebuildFileExData, rebuild FileExData list"` + searchPackages com.qqfav |
+
+注：锚点由扫荡 agent（sweep/verify_fav_anchors.py）验证，红队未二次抽验（低风险：com.qqfav 独立包 + 双串均冷僻）。
