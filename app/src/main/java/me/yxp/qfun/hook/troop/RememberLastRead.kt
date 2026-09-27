@@ -11,12 +11,14 @@ import me.yxp.qfun.common.ModuleScope
 import me.yxp.qfun.hook.api.AIOViewUpdateListener
 import me.yxp.qfun.hook.base.BaseSwitchHookItem
 import me.yxp.qfun.plugin.view.PluginViewLoader
+import me.yxp.qfun.utils.dexkit.DexKitTask
 import me.yxp.qfun.utils.hook.hookAfter
 import me.yxp.qfun.utils.io.ObjectStore
 import me.yxp.qfun.utils.qq.QQCurrentEnv
 import me.yxp.qfun.utils.reflect.findMethod
 import me.yxp.qfun.utils.reflect.newInstanceWithArgs
-import me.yxp.qfun.utils.reflect.toClass
+import org.luckypray.dexkit.query.FindClass
+import org.luckypray.dexkit.query.base.BaseMatcher
 import java.lang.reflect.Constructor
 import java.lang.reflect.Method
 
@@ -25,10 +27,12 @@ import java.lang.reflect.Method
     "记住群聊上次查看位置，进入聊天界面自动跳转",
     HookCategory.GROUP
 )
-object RememberLastRead : BaseSwitchHookItem(), AIOViewUpdateListener {
+object RememberLastRead : BaseSwitchHookItem(), DexKitTask, AIOViewUpdateListener {
 
     private lateinit var sendIntent: Method
     private lateinit var cotr: Constructor<*>
+
+    private var navigateBySeqEvent: Class<*>? = null
 
     private val serializer = MapSerializer(String.serializer(), Long.serializer())
     private var seqMap = mutableMapOf<String, Long>()
@@ -43,7 +47,9 @@ object RememberLastRead : BaseSwitchHookItem(), AIOViewUpdateListener {
 
     override fun onInit(): Boolean {
 
-        val vmMessenger = "com.tencent.mvi.base.route.VMMessenger".toClass
+        val vmMessenger = runCatching { requireClass("vmMessenger") }.getOrNull() ?: return false
+        navigateBySeqEvent = runCatching { requireClass("navigateBySeqEvent") }.getOrNull()
+            ?: return false
         cotr = vmMessenger.constructors.single {
             it.parameterCount == 2 && it.parameterTypes.contains(Boolean::class.javaPrimitiveType)
         }
@@ -63,8 +69,9 @@ object RememberLastRead : BaseSwitchHookItem(), AIOViewUpdateListener {
 
             ObjectStore.save("data", name, seqMap, serializer)
 
-            val intent = $$"com.tencent.mobileqq.aio.event.MsgNavigationEvent$NavigateBySeqEvent"
-                .toClass.newInstanceWithArgs("", seqMap[contact.peerUid], 0L, false, null, false, false, null, 228, null)
+            val intent = navigateBySeqEvent?.newInstanceWithArgs(
+                "", seqMap[contact.peerUid], 0L, false, null, false, false, null, 228, null
+            ) ?: return@hookAfter
 
             ModuleScope.launchMainDelayed(150) {
                 if (isFromHistory()) return@launchMainDelayed
@@ -79,5 +86,20 @@ object RememberLastRead : BaseSwitchHookItem(), AIOViewUpdateListener {
         val intent = QQCurrentEnv.activity?.intent ?: return false
         return intent.getStringExtra("preAct") == "NTChatHistoryActivity"
     }
+
+    override fun getQueryMap(): Map<String, BaseMatcher> = mapOf(
+        "vmMessenger" to FindClass().apply {
+            searchPackages("com.tencent.mvi.base.route")
+            matcher {
+                usingStrings("sendR must be access at Main Thread")
+            }
+        },
+        "navigateBySeqEvent" to FindClass().apply {
+            searchPackages("com.tencent.mobileqq.aio.event")
+            matcher {
+                usingStrings("NavigateBySeqEvent(source=")
+            }
+        }
+    )
 
 }

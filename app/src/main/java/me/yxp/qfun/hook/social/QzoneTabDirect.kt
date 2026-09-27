@@ -10,6 +10,7 @@ import android.view.ViewParent
 import me.yxp.qfun.annotation.HookCategory
 import me.yxp.qfun.annotation.HookItemAnnotation
 import me.yxp.qfun.hook.base.BaseSwitchHookItem
+import me.yxp.qfun.utils.dexkit.DexKitTask
 import me.yxp.qfun.utils.hook.doNothing
 import me.yxp.qfun.utils.hook.hookAfter
 import me.yxp.qfun.utils.hook.hookBefore
@@ -17,6 +18,8 @@ import me.yxp.qfun.utils.log.LogUtils
 import me.yxp.qfun.utils.qq.HostInfo
 import me.yxp.qfun.utils.qq.QQCurrentEnv
 import me.yxp.qfun.utils.reflect.clazz
+import org.luckypray.dexkit.query.FindClass
+import org.luckypray.dexkit.query.base.BaseMatcher
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 
@@ -43,18 +46,26 @@ import java.lang.reflect.Modifier
     "点击底栏动态Tab时直接显示空间好友动态（含灰带消除；空间页缺失时自动回退聚合页）",
     HookCategory.SOCIAL
 )
-object QzoneTabDirect : BaseSwitchHookItem() {
+object QzoneTabDirect : BaseSwitchHookItem(), DexKitTask {
 
+    // DEXKIT-EXEMPT: docs §5 定稿——facade 懒注册三管结构保持原样；稳定未混淆名无迁移收益
     private const val QZONE_API_PROXY = "com.tencent.qzonehub.api.impl.QZoneApiProxyImpl"
     private const val QZONE_API_PROXY_FACADE = "cooperation.qzone.api.QZoneApiProxy"
+    // DEXKIT-EXEMPT: mqq.app.AppRuntime 为 QQ 平台级基础类，仅作方法签名匹配的类型 token，
+    // 非 hook 目标；发布以来名称未变
     private const val APP_RUNTIME = "mqq.app.AppRuntime"
+    // DEXKIT-EXEMPT: docs §5 定稿三管（checkBusinessSwitch 状态覆写）结构不动；稳定名
     private const val TAB_FRAME_CONTROLLER =
         "com.tencent.mobileqq.activity.home.impl.TabFrameControllerImpl"
+    // DEXKIT-EXEMPT: 仅作功能启用前置检查（presence gate），非 hook 目标；稳定名
     private const val QZONE_FRAME = "com.tencent.mobileqq.activity.leba.QzoneFrame"
+    // DEXKIT-EXEMPT: 灰带1 定稿结构不动；稳定名
     private const val SUBSCRIBE_REFRESH_HEADER =
         "com.tencent.biz.subscribe.part.block.base.RefreshHeaderView"
+    // DEXKIT-EXEMPT: 灰带手术 bindData/c0 双方法挂载定稿；稳定名
     private const val FEED_ITEM_BASE = "com.qzone.reborn.feedx.itemview.QZoneBaseFeedItemView"
     private const val FEED_LIST_DECORATION = "com.qzone.reborn.feedx.widget.j"
+    // 资源 ID 非 dex 目标（docs §5），跨版本需 aapt2 重确认
     private const val BOTTOM_AREA_ID = 0x7f0a6619
     private const val MIN_VERSION_CODE = 12290
 
@@ -89,7 +100,9 @@ object QzoneTabDirect : BaseSwitchHookItem() {
         facadeMethod = QZONE_API_PROXY_FACADE.clazz?.declaredMethods?.firstOrNull {
             Modifier.isStatic(it.modifiers) && it.isNeedShowQzoneFrame()
         }
-        implGateMethod = QZONE_API_PROXY.clazz?.declaredMethods?.firstOrNull {
+        val implCls = runCatching { requireClass("qzoneApiProxyImpl") }.getOrNull()
+            ?: QZONE_API_PROXY.clazz
+        implGateMethod = implCls?.declaredMethods?.firstOrNull {
             !Modifier.isStatic(it.modifiers) && it.isNeedShowQzoneFrame()
         }
         if (facadeMethod == null && implGateMethod == null) {
@@ -185,7 +198,9 @@ object QzoneTabDirect : BaseSwitchHookItem() {
     /** 懒挂载：列表装饰器（灰条绘制与预留）双拦截。 */
     private fun armListDecoration() {
         if (listDecoArmed) return
-        val ms = FEED_LIST_DECORATION.clazz?.declaredMethods
+        val decoCls = runCatching { requireClass("feedListDecoration") }.getOrNull()
+            ?: FEED_LIST_DECORATION.clazz
+        val ms = decoCls?.declaredMethods
         if (ms != null) {
             ms.forEach { m ->
                 when (m.name) {
@@ -262,4 +277,28 @@ object QzoneTabDirect : BaseSwitchHookItem() {
             java.io.File(HostInfo.hostContext.filesDir, "qfun_bg_dump.txt").writeText(out.toString())
         }
     }
+
+    override fun getQueryMap(): Map<String, BaseMatcher> = mapOf(
+        "qzoneApiProxyImpl" to FindClass().apply {
+            searchPackages("com.tencent.qzonehub.api.impl")
+            matcher {
+                // QZone 环境初始化日志串，impl 类独有（9.3.15 双包全 dex 验证唯一）
+                usingStrings("initEnv: loadQZoneClass")
+            }
+        },
+
+        "feedListDecoration" to FindClass().apply {
+            searchPackages("com.qzone.reborn.feedx.widget")
+            matcher {
+                // 混淆名 j 随版本变：按 find_onDraw.py 的"双声明+灰条绘制"结构特征定位，
+                // feedx/widget 树内唯一同时声明 getItemOffsets+onDraw 的 ItemDecoration
+                // （9.3.15 双包验证唯一）
+                superClass("androidx.recyclerview.widget.RecyclerView\$ItemDecoration")
+                methods {
+                    add { name("getItemOffsets") }
+                    add { name("onDraw") }
+                }
+            }
+        }
+    )
 }

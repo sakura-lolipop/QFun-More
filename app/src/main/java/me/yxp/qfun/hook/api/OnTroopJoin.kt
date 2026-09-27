@@ -17,6 +17,7 @@ import me.yxp.qfun.utils.qq.HostInfo
 import me.yxp.qfun.utils.qq.api
 import me.yxp.qfun.utils.reflect.findMethod
 import me.yxp.qfun.utils.reflect.toClass
+import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.FindMethod
 import org.luckypray.dexkit.query.base.BaseMatcher
 import kotlin.coroutines.resume
@@ -34,7 +35,9 @@ object OnTroopJoin : BaseApiHookItem<TroopJoinListener>(), DexKitTask {
         }
 
         if (HostInfo.isQQ) {
-            "com.tencent.qqnt.push.processor.TroopMemberAddPushProcessor".toClass.findMethod {
+            val processorCls = runCatching { requireClass("troopMemberAddProcessor") }.getOrNull()
+                ?: "com.tencent.qqnt.push.processor.TroopMemberAddPushProcessor".toClass
+            processorCls.findMethod {
                 returnType = void
                 paramTypes(arrayList)
             }.hookAfter(this) { param ->
@@ -82,7 +85,16 @@ object OnTroopJoin : BaseApiHookItem<TroopJoinListener>(), DexKitTask {
                     paramTypes(clazz, clazz, clazz)
                     usingStrings("handleMemberAdd addMemberUin:")
                 }
-            })
+            },
+
+            "troopMemberAddProcessor" to FindClass().apply {
+                searchPackages("com.tencent.qqnt.push.processor")
+                matcher {
+                    // 入群推送日志串，该 processor 独有（9.3.15 双包全 dex 验证唯一）
+                    usingStrings("onPushReceive: byte troopUin=")
+                }
+            }
+        )
     }
 }
 

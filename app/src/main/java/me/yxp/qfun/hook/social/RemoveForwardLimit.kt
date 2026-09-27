@@ -33,9 +33,12 @@ object RemoveForwardLimit : BaseSwitchHookItem(), DexKitTask {
         if (isNew) {
             configClass = requireClass("ChatSelectorConfig")
         } else {
-            recentClass = "com.tencent.mobileqq.activity.ForwardRecentActivity".toClass
-            friendClass = "com.tencent.mobileqq.activity.ForwardFriendListActivity".toClass
-            troopClass = "com.tencent.mobileqq.activity.ForwardTroopListFragment".toClass
+            recentClass = runCatching { requireClass("forwardRecentActivity") }.getOrNull()
+                ?: "com.tencent.mobileqq.activity.ForwardRecentActivity".toClass
+            friendClass = runCatching { requireClass("forwardFriendListActivity") }.getOrNull()
+                ?: "com.tencent.mobileqq.activity.ForwardFriendListActivity".toClass
+            troopClass = runCatching { requireClass("forwardTroopListFragment") }.getOrNull()
+                ?: "com.tencent.mobileqq.activity.ForwardTroopListFragment".toClass
         }
 
         return super.onInit()
@@ -75,6 +78,32 @@ object RemoveForwardLimit : BaseSwitchHookItem(), DexKitTask {
         "ChatSelectorConfig" to FindClass().apply {
             matcher {
                 usingStrings("ChatSelectorConfig")
+            }
+        },
+
+        // 旧版分支（versionCode < 11820）：三个转发选择器均为稳定名，锚点 9.3.15 双包验证唯一；
+        // 旧 QQ 上若锚点失配则落空走硬编码回退，行为不变
+        "forwardRecentActivity" to FindClass().apply {
+            searchPackages("com.tencent.mobileqq.activity")
+            matcher {
+                usingStrings("refreshRecentList, filter deleted friend, uin = ")
+            }
+        },
+
+        "forwardFriendListActivity" to FindClass().apply {
+            searchPackages("com.tencent.mobileqq.activity")
+            matcher {
+                usingStrings("forwardOption is null, return.")
+            }
+        },
+
+        "forwardTroopListFragment" to FindClass().apply {
+            searchPackages("com.tencent.mobileqq.activity")
+            matcher {
+                // choose_* 常量与 ForwardFriendListActivity 共享，
+                // 以基类 PublicBaseFragment 区分（Friend 系继承 BaseForwardSelectionActivity）
+                superClass("com.tencent.mobileqq.fragment.PublicBaseFragment")
+                usingStrings("choose_fri_multiple_page_type")
             }
         }
     )

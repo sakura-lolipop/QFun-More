@@ -20,6 +20,8 @@ object DisableHotPatch : BaseSwitchHookItem() {
 
     override fun onHook() {
 
+        // DEXKIT-EXEMPT: 启动关键路径，先于 DexKit 扫描（热补丁框架在应用启动早期即生效，
+        // 必须用稳定名第一时间挂上，首次运行缓存为空不能漏屏蔽）
         "com.tencent.rfix.lib.download.PatchDownloadTask".clazz
             ?.getDeclaredMethod("run")
             ?.doNothing(this)

@@ -82,8 +82,8 @@ object ForwardPtt : BaseSwitchHookItem(), DexKitTask {
             }
 
         } else {
-            val aioForwardHandler =
-                "com.tencent.mobileqq.sharepanel.forward.handler.AIOForwardHandler".toClass
+            val aioForwardHandler = runCatching { requireClass("AIOForwardHandler") }.getOrNull()
+                ?: "com.tencent.mobileqq.sharepanel.forward.handler.AIOForwardHandler".toClass
 
             handleForward = aioForwardHandler.findMethod {
                 name = "forward"
@@ -218,6 +218,13 @@ object ForwardPtt : BaseSwitchHookItem(), DexKitTask {
             searchPackages("com.tencent.qqnt.aio.menu")
             matcher {
                 usingStrings("ForwardMenuItem")
+            }
+        },
+
+        "AIOForwardHandler" to FindClass().apply {
+            searchPackages("com.tencent.mobileqq.sharepanel.forward.handler")
+            matcher {
+                usingStrings("fixAIAssistantForwardContacts: prepareForwardSession=")
             }
         },
 

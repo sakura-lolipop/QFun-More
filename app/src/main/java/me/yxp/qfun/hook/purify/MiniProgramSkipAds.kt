@@ -50,10 +50,12 @@ object MiniProgramSkipAds : BaseSwitchHookItem(), DexKitTask {
     override fun onInit(): Boolean {
         mvControllerCallback = runCatching { requireMethod("mvControllerCallback") }.getOrNull()
 
+        // DEXKIT-EXEMPT: GdtMotiveBrowsingDialog 在 9.3.15 双包均不存在，无锚点可验证
         browsingDialogCls = "com.tencent.gdtad.basics.motivebrowsing.GdtMotiveBrowsingDialog".clazz
         doOnBackEvent = browsingDialogCls?.findMethodOrNull { name = "doOnBackEvent" }
 
-        videoViewControllerCls = "com.tencent.gdtad.basics.motivevideo.GdtMvVideoViewController".clazz
+        videoViewControllerCls = runCatching { requireClass("videoViewController") }.getOrNull()
+            ?: "com.tencent.gdtad.basics.motivevideo.GdtMvVideoViewController".clazz
         onBackEvent = videoViewControllerCls?.findMethodOrNull {
             returnType = boolean
             paramTypes(boolean)
@@ -142,6 +144,14 @@ object MiniProgramSkipAds : BaseSwitchHookItem(), DexKitTask {
             searchPackages("com.tencent.gdtad.basics.motivevideo")
             matcher {
                 usingStrings("onWindowFocusChanged() called with: hasFocus = [")
+            }
+        },
+        "videoViewController" to FindClass().apply {
+            searchPackages("com.tencent.gdtad.basics.motivevideo")
+            matcher {
+                // 视频控制器独有日志串：姊妹类 GdtMvPictureViewController 共享其余日志串，
+                // 此串在 9.3.15 双包全 dex 验证唯一
+                usingStrings("[doPauseAction] mIsVideoPlayCompleted:")
             }
         }
     )

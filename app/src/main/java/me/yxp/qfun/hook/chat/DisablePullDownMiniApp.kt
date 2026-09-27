@@ -10,6 +10,7 @@ import me.yxp.qfun.utils.reflect.callMethod
 import me.yxp.qfun.utils.reflect.clazz
 import me.yxp.qfun.utils.reflect.findMethodOrNull
 import me.yxp.qfun.utils.reflect.setQzFieldDeep
+import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.FindMethod
 import org.luckypray.dexkit.query.base.BaseMatcher
 import java.lang.reflect.Method
@@ -29,7 +30,8 @@ object DisablePullDownMiniApp : BaseSwitchHookItem(), DexKitTask {
     private var initMiniAppEntryMethod: Method? = null
 
     override fun onInit(): Boolean {
-        headerCls = "com.tencent.qqnt.chats.view.MiniOldStyleHeaderNew".clazz
+        headerCls = runCatching { requireClass("miniAppHeader") }.getOrNull()
+            ?: "com.tencent.qqnt.chats.view.MiniOldStyleHeaderNew".clazz
             ?: "com.tencent.qqnt.chats.view.MiniOldStyleHeader".clazz
 
         stateChangedMethod = headerCls?.let { cls -> findStateChangedMethod(cls) }
@@ -92,6 +94,18 @@ object DisablePullDownMiniApp : BaseSwitchHookItem(), DexKitTask {
     }
 
     override fun getQueryMap(): Map<String, BaseMatcher> = mapOf(
+        "miniAppHeader" to FindClass().apply {
+            searchPackages("com.tencent.qqnt.chats.view")
+            matcher {
+                // 'finishTwoLevel(...)' 在该包内仅两个 header 类引用（9.3.15 验证），
+                // 再以仅 New 声明的框架回调 onConfigurationChanged 区分 New/旧版
+                usingStrings("finishTwoLevel(...)")
+                methods {
+                    add { name("onConfigurationChanged") }
+                }
+            }
+        },
+
         "initMiniAppEntry" to FindMethod().apply {
             searchPackages("com.tencent.mobileqq.activity.home")
             matcher {

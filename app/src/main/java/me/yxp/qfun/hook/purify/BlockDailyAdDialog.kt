@@ -18,6 +18,8 @@ import me.yxp.qfun.utils.reflect.findMethodOrNull
 object BlockDailyAdDialog : BaseSwitchHookItem() {
 
     private val adDialogs = listOf(
+        // DEXKIT-EXEMPT: 两个弹窗类在 9.3.15 双包均不存在，无锚点可验证；
+        // onInit 的 any{} 已按"全缺则静默禁用"降级
         "com.tencent.gdtad.basics.motivebrowsing.GdtMotiveBrowsingDialog",
         "com.tencent.gdtad.basics.motivevideo.GdtMvVideoDialog"
     )

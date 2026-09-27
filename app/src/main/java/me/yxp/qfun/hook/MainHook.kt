@@ -69,6 +69,7 @@ object MainHook {
 
     private fun hookAccountChange() {
 
+        // DEXKIT-EXEMPT: 启动关键路径，先于 DexKit 扫描（账号引导钩子，首次运行缓存为空不能失败）
         "com.tencent.imcore.message.BaseQQMessageFacade".toClass
             .declaredConstructors.first()
             .hookAfter {

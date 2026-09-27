@@ -13,6 +13,7 @@ import me.yxp.qfun.loader.hookapi.Chain
 import me.yxp.qfun.ui.components.atoms.DialogTextField
 import me.yxp.qfun.ui.components.dialogs.CenterDialogContainer
 import me.yxp.qfun.ui.core.compatibility.QFunCenterDialog
+import me.yxp.qfun.utils.dexkit.DexKitTask
 import me.yxp.qfun.utils.hook.hookReplace
 import me.yxp.qfun.utils.hook.invokeOriginal
 import me.yxp.qfun.utils.hook.returnConstant
@@ -20,6 +21,8 @@ import me.yxp.qfun.utils.qq.HostInfo
 import me.yxp.qfun.utils.qq.QQCurrentEnv
 import me.yxp.qfun.utils.reflect.findMethod
 import me.yxp.qfun.utils.reflect.toClass
+import org.luckypray.dexkit.query.FindClass
+import org.luckypray.dexkit.query.base.BaseMatcher
 import java.lang.reflect.Method
 
 @HookItemAnnotation(
@@ -27,7 +30,7 @@ import java.lang.reflect.Method
     "点击好友在线列表拍一拍与私聊回拍时可输入次数",
     HookCategory.SOCIAL
 )
-object MultiOnlineNudge : BaseSwitchHookItem() {
+object MultiOnlineNudge : BaseSwitchHookItem(), DexKitTask {
 
     private lateinit var sendNudge: Method
 
@@ -35,7 +38,8 @@ object MultiOnlineNudge : BaseSwitchHookItem() {
 
     override fun onInit(): Boolean {
         if (HostInfo.isTIM || (HostInfo.isQQ && HostInfo.versionCode < 14880)) return false
-        val managerClass = "com.tencent.mobileqq.onlinestatus.proto.OnlineStatusNudgeManager".toClass
+        val managerClass = runCatching { requireClass("onlineStatusNudgeManager") }.getOrNull()
+            ?: "com.tencent.mobileqq.onlinestatus.proto.OnlineStatusNudgeManager".toClass
 
         sendNudge = managerClass.findMethod {
             returnType = void
@@ -87,4 +91,14 @@ object MultiOnlineNudge : BaseSwitchHookItem() {
             }
         }.show()
     }
+
+    override fun getQueryMap(): Map<String, BaseMatcher> = mapOf(
+        "onlineStatusNudgeManager" to FindClass().apply {
+            searchPackages("com.tencent.mobileqq.onlinestatus.proto")
+            matcher {
+                // 在线状态拍一拍发送日志串（9.3.15 双包全 dex 验证唯一）
+                usingStrings("[sendOnlineFriendNudge] sent, targetUin=")
+            }
+        }
+    )
 }

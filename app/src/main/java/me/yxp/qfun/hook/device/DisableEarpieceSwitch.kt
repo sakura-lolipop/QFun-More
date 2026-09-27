@@ -3,27 +3,33 @@ package me.yxp.qfun.hook.device
 import me.yxp.qfun.annotation.HookCategory
 import me.yxp.qfun.annotation.HookItemAnnotation
 import me.yxp.qfun.hook.base.BaseSwitchHookItem
+import me.yxp.qfun.utils.dexkit.DexKitTask
 import me.yxp.qfun.utils.hook.hookBefore
 import me.yxp.qfun.utils.reflect.clazz
 import me.yxp.qfun.utils.reflect.findMethodOrNull
-import me.yxp.qfun.utils.reflect.toClass
+import org.luckypray.dexkit.query.FindClass
+import org.luckypray.dexkit.query.base.BaseMatcher
 
 @HookItemAnnotation(
     "禁用听语音时听筒来回自动切换",
     "听语音时距离传感器不再自动切换听筒/扬声器，手动切换不受影响",
     HookCategory.DEVICE
 )
-object DisableEarpieceSwitch : BaseSwitchHookItem() {
+object DisableEarpieceSwitch : BaseSwitchHookItem(), DexKitTask {
 
+    // DEXKIT-EXEMPT: 旧版 QQ 专用回退分支，9.3.15 包内不存在该类，锚点无法静态验证
     private const val OLD_HELPER =
         "com.tencent.qqnt.audio.play.player.AudioPlayerDeviceHelper"
     private const val OLD_METHOD = "onNearToEarStatusChanged"
 
-    private const val NEW_IMPL =
-        "com.tencent.mobileqq.qqaudio.audioplayer.impl.AudioDeviceServiceImpl"
     private const val NEW_METHOD = "notifyAllDeviceStatusChanged"
 
-    override fun onInit(): Boolean = OLD_HELPER.clazz != null || NEW_IMPL.clazz != null
+    private var newImpl: Class<*>? = null
+
+    override fun onInit(): Boolean {
+        newImpl = runCatching { requireClass("newImpl") }.getOrNull()
+        return OLD_HELPER.clazz != null || newImpl != null
+    }
 
     override fun onHook() {
         if (!hookOld()) hookNew()
@@ -40,7 +46,7 @@ object DisableEarpieceSwitch : BaseSwitchHookItem() {
     }
 
     private fun hookNew(): Boolean {
-        val clazz = NEW_IMPL.clazz ?: return false
+        val clazz = newImpl ?: return false
         val method = clazz.findMethodOrNull {
             name = NEW_METHOD
             paramTypes(int, boolean)
@@ -48,4 +54,13 @@ object DisableEarpieceSwitch : BaseSwitchHookItem() {
         method.hookBefore(this) { param -> param.result = null }
         return true
     }
+
+    override fun getQueryMap(): Map<String, BaseMatcher> = mapOf(
+        "newImpl" to FindClass().apply {
+            searchPackages("com.tencent.mobileqq.qqaudio.audioplayer.impl")
+            matcher {
+                usingStrings("notifyAllDeviceStatusChanged: audioDeviceListener=")
+            }
+        }
+    )
 }

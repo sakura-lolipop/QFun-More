@@ -15,6 +15,8 @@ import me.yxp.qfun.utils.reflect.findMethod
 )
 object DisableX5Kernel : BaseSwitchHookItem() {
 
+    // DEXKIT-EXEMPT: X5 SDK（com.tencent.smtt）公开 API 类，非 QQ 混淆业务类，
+    // SDK 命名空间跨版本稳定，无升级失效风险，迁移无收益
     private const val QB_SDK = "com.tencent.smtt.sdk.QbSdk"
 
     override fun onInit() = HostInfo.isQQ && QB_SDK.clazz != null

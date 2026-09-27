@@ -6,21 +6,25 @@ import com.tencent.mobileqq.aio.msglist.holder.component.timestamp.AIOTimestampC
 import me.yxp.qfun.annotation.HookCategory
 import me.yxp.qfun.annotation.HookItemAnnotation
 import me.yxp.qfun.hook.base.BaseSwitchHookItem
+import me.yxp.qfun.utils.dexkit.DexKitTask
 import me.yxp.qfun.utils.hook.hookAfter
 import me.yxp.qfun.utils.reflect.findMethod
 import me.yxp.qfun.utils.reflect.toClass
+import org.luckypray.dexkit.query.FindClass
+import org.luckypray.dexkit.query.base.BaseMatcher
 
 @HookItemAnnotation(
     "隐藏系统时间",
     "隐藏聊天界面中居中显示的系统时间",
     HookCategory.PURIFY
 )
-object HideSystemTime : BaseSwitchHookItem() {
+object HideSystemTime : BaseSwitchHookItem(), DexKitTask {
 
     private const val TARGET_CLASS = $$"com.tencent.mobileqq.aio.msglist.holder.AIOItemComponentProvider$mComponentList$2"
 
     override fun onHook() {
-        TARGET_CLASS.toClass
+        // DexKit 缓存未命中（首次启动未扫描）时回退原硬编码（保留 toClass 缺类抛错语义）
+        (runCatching { requireClass("componentListLambda") }.getOrNull() ?: TARGET_CLASS.toClass)
             .findMethod {
                 returnType = SparseArray::class.java
                 name = "invoke"
@@ -34,5 +38,22 @@ object HideSystemTime : BaseSwitchHookItem() {
                 }
             }
     }
-    
+
+    override fun getQueryMap(): Map<String, BaseMatcher> = mapOf(
+        "componentListLambda" to FindClass().apply {
+            searchPackages("com.tencent.mobileqq.aio.msglist.holder")
+            matcher {
+                // 该包下存在结构完全相同的姊妹 lambda（mLazyComponentList$2，仅 put 8 号位），
+                // 以 invoke 内使用的组件类型常量 13 区分（9.3.15 双包验证唯一）
+                superClass("kotlin.jvm.internal.Lambda")
+                methods {
+                    add {
+                        name("invoke")
+                        returnType("android.util.SparseArray")
+                        usingNumbers(13)
+                    }
+                }
+            }
+        }
+    )
 }

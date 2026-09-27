@@ -46,13 +46,17 @@ object MultiRecall : BaseSwitchHookItem(), DexKitTask {
 
     override fun onInit(): Boolean {
 
-        val className = if (HostInfo.isTIM) {
+        val fallbackClassName = if (HostInfo.isTIM) {
             "com.tencent.tim.aio.inputbar.TimMultiSelectBarVB"
         } else {
             "com.tencent.mobileqq.aio.input.multiselect.MultiSelectBarVB"
         }
 
-        val multiSelectBarVBClass = className.toClass
+        // 内层匿名类名由外层 VB 类名派生（$mOperationLayout$2 后缀），
+        // 故外层无论走 DexKit 还是兜底，都把解析后的类名喂给原有派生逻辑
+        val multiSelectBarVBClass = runCatching { requireClass("multiSelectBarVB") }.getOrNull()
+            ?: fallbackClassName.toClass
+        val className = multiSelectBarVBClass.name
         val operationLayoutClass = $$"$$className$mOperationLayout$2".toClass
         val multiSelectUtil = requireClass("MultiSelectUtil")
 
@@ -166,6 +170,14 @@ object MultiRecall : BaseSwitchHookItem(), DexKitTask {
             searchPackages("com.tencent.mobileqq.aio.msglist.holder.component.multifoward")
             matcher {
                 usingStrings("msgList")
+            }
+        },
+
+        "multiSelectBarVB" to FindClass().apply {
+            searchPackages("com.tencent.mobileqq.aio.input.multiselect")
+            matcher {
+                // 埋点事件名：全 dex 4 处引用，仅 MultiSelectBarVB 在本包内（9.3.15 验证）
+                usingStrings("em_bas_aio_multi_selection_operation")
             }
         }
     )

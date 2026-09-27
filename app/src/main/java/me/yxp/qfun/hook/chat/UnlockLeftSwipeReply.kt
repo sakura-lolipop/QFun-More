@@ -3,9 +3,12 @@ package me.yxp.qfun.hook.chat
 import me.yxp.qfun.annotation.HookCategory
 import me.yxp.qfun.annotation.HookItemAnnotation
 import me.yxp.qfun.hook.base.BaseSwitchHookItem
+import me.yxp.qfun.utils.dexkit.DexKitTask
 import me.yxp.qfun.utils.hook.replaceFirstParam
 import me.yxp.qfun.utils.reflect.findMethod
 import me.yxp.qfun.utils.reflect.toClass
+import org.luckypray.dexkit.query.FindClass
+import org.luckypray.dexkit.query.base.BaseMatcher
 import java.lang.reflect.Method
 
 @HookItemAnnotation(
@@ -13,12 +16,13 @@ import java.lang.reflect.Method
     "解除部分类型消息无法左滑回复的限制",
     HookCategory.CHAT
 )
-object UnlockLeftSwipeReply : BaseSwitchHookItem() {
+object UnlockLeftSwipeReply : BaseSwitchHookItem(), DexKitTask {
 
     private lateinit var setSwipeEnable: Method
 
     override fun onInit(): Boolean {
-        setSwipeEnable = "com.tencent.mobileqq.aio.msglist.holder.component.leftswipearea.AIOContentLeftSwipeHelper".toClass
+        setSwipeEnable = (runCatching { requireClass("leftSwipeHelper") }.getOrNull()
+            ?: "com.tencent.mobileqq.aio.msglist.holder.component.leftswipearea.AIOContentLeftSwipeHelper".toClass)
             .findMethod {
                 returnType = void
                 paramTypes(boolean)
@@ -29,4 +33,13 @@ object UnlockLeftSwipeReply : BaseSwitchHookItem() {
     override fun onHook() {
         setSwipeEnable.replaceFirstParam(true, this)
     }
+
+    override fun getQueryMap(): Map<String, BaseMatcher> = mapOf(
+        "leftSwipeHelper" to FindClass().apply {
+            searchPackages("com.tencent.mobileqq.aio.msglist.holder.component.leftswipearea")
+            matcher {
+                usingStrings("onTouchEvent onLeftSwipeEnd")
+            }
+        }
+    )
 }

@@ -40,12 +40,24 @@ DexKit 按**语义特征**（字符串锚点、方法签名、继承关系）在
 
 ## 4. 已知锚点档案（9.3.15 验证）
 
+> 2026-09-27 全量迁移完成：45 文件、53 个锚点（chat 7 / purify 24 / social+api 17 / misc 5），
+> 全部走 `runCatching { requireClass(key) }.getOrNull() ?: 原硬编码` 降级链——
+> 缓存未命中（首次启动未扫描 / QQ 升级锚点失效）时行为与迁移前逐字节一致，不会误 hook。
+> 分目录锚点明细（含唯一性验证证据与弃用候选记录）：
+> - `docs/dexkit-anchors-chat.md`
+> - `docs/dexkit-anchors-purify.md`
+> - `docs/dexkit-anchors-social-api.md`
+> - `docs/dexkit-anchors-misc.md`
+> 豁免项（DEXKIT-EXEMPT）三类：启动关键路径（MainHook/DisableHotPatch，先于 DexKit 扫描）、
+> 双包验证不存在的失效类、运行时视图树检查/资源 ID/协议串（非 dex 目标）。
+> QQ 升级后复核脚本：`qstory/qstory_menu_analysis/dexkit_migration/verify_*.py`。
+
 | 目标 | 锚点 | 说明 |
 |---|---|---|
 | 小程序入口布局 | usingStrings `"init Mini App, cost="` | B6 |
 | GDT 广告回调 | usingStrings `"GdtMvTitleHelper"` + `"bar == null"` | B5 路A |
 | frame 决策链 | usingStrings `"FrameControllerInjectImpl.setQzoneLebaTab"` | B2 决策链 |
-| 空间列表装饰器 | 类名 `com.qzone.reborn.feedx.widget.j`（9.3.15 混淆名） | ⚠️ **未 DexKit 化**，升级后用 find_onDraw.py 重定位（双声明+灰色 Paint 特征） |
+| 空间列表装饰器 | superClass(ItemDecoration)+双声明结构锚点 | 已 DexKit 化（原硬编码 widget/j 弃用） |
 
 ## 5. QzoneTabDirect（B2）的特殊性
 

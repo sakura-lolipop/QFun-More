@@ -16,6 +16,8 @@ import me.yxp.qfun.utils.reflect.findMethods
 object HideTroopRiskTipsBar : BaseSwitchHookItem() {
 
     // QStory: 在 com.tencent.mobileqq.troop.tipsbar 包下按类名包含 TroopSecurityTipsBar 动态定位
+    // DEXKIT-EXEMPT: 三个候选类在 9.3.15 双包均不存在，无锚点可验证；
+    // onInit 的 candidateClass() 已按"全缺则静默禁用"降级
     private val candidateClasses = listOf(
         "com.tencent.mobileqq.troop.tipsbar.TroopSecurityTipsBar",
         "com.tencent.mobileqq.troop.tipsbar.a.TroopSecurityTipsBar",

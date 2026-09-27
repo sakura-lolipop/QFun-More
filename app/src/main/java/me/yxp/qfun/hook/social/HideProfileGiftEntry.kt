@@ -9,9 +9,12 @@ import android.widget.TextView
 import me.yxp.qfun.annotation.HookCategory
 import me.yxp.qfun.annotation.HookItemAnnotation
 import me.yxp.qfun.hook.base.BaseSwitchHookItem
+import me.yxp.qfun.utils.dexkit.DexKitTask
 import me.yxp.qfun.utils.hook.hookAfter
 import me.yxp.qfun.utils.reflect.clazz
 import me.yxp.qfun.utils.reflect.findMethodOrNull
+import org.luckypray.dexkit.query.FindClass
+import org.luckypray.dexkit.query.base.BaseMatcher
 import java.lang.reflect.Method
 
 @HookItemAnnotation(
@@ -19,7 +22,7 @@ import java.lang.reflect.Method
     "屏蔽好友资料卡底部工具栏中的送礼物按钮",
     HookCategory.SOCIAL
 )
-object HideProfileGiftEntry : BaseSwitchHookItem() {
+object HideProfileGiftEntry : BaseSwitchHookItem(), DexKitTask {
 
     private const val GIFT_TEXT = "送礼物"
 
@@ -27,8 +30,8 @@ object HideProfileGiftEntry : BaseSwitchHookItem() {
     private var initViewsMethod: Method? = null
 
     override fun onInit(): Boolean {
-        bottomContainerCls =
-            "com.tencent.mobileqq.profilecard.base.container.ProfileBottomContainer".clazz
+        bottomContainerCls = runCatching { requireClass("profileBottomContainer") }.getOrNull()
+            ?: "com.tencent.mobileqq.profilecard.base.container.ProfileBottomContainer".clazz
         initViewsMethod = bottomContainerCls?.findMethodOrNull {
             name = "initViews"
             paramCount = 0
@@ -107,4 +110,14 @@ object HideProfileGiftEntry : BaseSwitchHookItem() {
             }
         })
     }
+
+    override fun getQueryMap(): Map<String, BaseMatcher> = mapOf(
+        "profileBottomContainer" to FindClass().apply {
+            searchPackages("com.tencent.mobileqq.profilecard.base.container")
+            matcher {
+                // 送礼物入口 H5 跳转的 MMKV/配置 key，该容器类独有引用（9.3.15 双包全 dex 验证唯一）
+                usingStrings("give_gift_button_in_profile_url")
+            }
+        }
+    )
 }

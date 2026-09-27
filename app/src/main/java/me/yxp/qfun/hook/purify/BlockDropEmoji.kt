@@ -15,6 +15,8 @@ import me.yxp.qfun.utils.reflect.findMethods
 )
 object BlockDropEmoji : BaseSwitchHookItem() {
 
+    // DEXKIT-EXEMPT: 两个 config helper 在 9.3.15 双包均不存在，无锚点可验证；
+    // onInit 的 any{} 已按"全缺则静默禁用"降级
     private val configHelpers = listOf(
         "com.tencent.mobileqq.aio.animation.util.AioAnimationConfigHelper",
         "com.tencent.mobileqq.activity.aio.anim.AioAnimationConfigHelper"

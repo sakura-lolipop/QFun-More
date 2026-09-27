@@ -5,27 +5,32 @@ import android.view.View
 import me.yxp.qfun.annotation.HookCategory
 import me.yxp.qfun.annotation.HookItemAnnotation
 import me.yxp.qfun.hook.base.BaseSwitchHookItem
+import me.yxp.qfun.utils.dexkit.DexKitTask
 import me.yxp.qfun.utils.hook.hookAfter
 import me.yxp.qfun.utils.hook.hookBefore
 import me.yxp.qfun.utils.log.LogUtils
 import me.yxp.qfun.utils.reflect.clazz
+import org.luckypray.dexkit.query.FindClass
+import org.luckypray.dexkit.query.base.BaseMatcher
 
 @HookItemAnnotation(
     "隐藏QQ空间广告",
     "过滤空间信息流广告卡片、相册推荐广告与推荐广告位",
     HookCategory.SOCIAL
 )
-object HideQzoneAd : BaseSwitchHookItem() {
+object HideQzoneAd : BaseSwitchHookItem(), DexKitTask {
 
+    // (DexKit 缓存key, 原硬编码类名) —— 缓存命中用锚点定位，未命中回退硬编码
     private val adItemViewNames = listOf(
-        "com.qzone.reborn.feedx.itemview.ad.QZoneAdBaseFeedItemView",
-        "com.qzone.reborn.feedpro.itemview.ad.QZoneAdBaseMediaFeedProItemView",
-        "com.qzone.reborn.feedpro.itemview.QzoneFeedProGeneralBigCardItemView",
-        "com.qzone.reborn.feedpro.itemview.QZoneAdFeedProForwardMixPicVideoItemView",
-        "com.qzone.reborn.feedpro.widget.comment.QZoneFeedProDetailBottomAdBlockView",
-        "com.qzone.reborn.feedx.itemview.ad.QZoneAdRewardFeedItemView",
+        "adFeedxBase" to "com.qzone.reborn.feedx.itemview.ad.QZoneAdBaseFeedItemView",
+        "adProMediaBase" to "com.qzone.reborn.feedpro.itemview.ad.QZoneAdBaseMediaFeedProItemView",
+        "adProGeneralBigCard" to "com.qzone.reborn.feedpro.itemview.QzoneFeedProGeneralBigCardItemView",
+        "adProForwardMix" to "com.qzone.reborn.feedpro.itemview.QZoneAdFeedProForwardMixPicVideoItemView",
+        "adProDetailBottom" to "com.qzone.reborn.feedpro.widget.comment.QZoneFeedProDetailBottomAdBlockView",
+        "adRewardFeed" to "com.qzone.reborn.feedx.itemview.ad.QZoneAdRewardFeedItemView",
     )
 
+    // DEXKIT-EXEMPT: 9.3.15 双包均不存在（hook 点已失效），无锚点可验证
     private const val ALBUM_ADV_CONTROLLER = "com.tencent.mobileqq.vas.adv.qzone.logic.AlbumRecommendAdvController"
     private const val AD_FEED_DATA_EXT = "com.qzone.proxy.feedcomponent.model.gdt.QZoneAdFeedDataExtKt"
 
@@ -47,9 +52,10 @@ object HideQzoneAd : BaseSwitchHookItem() {
     }
 
     private fun hookAdItemViewConstructors() {
-        for (name in adItemViewNames) {
+        for ((key, name) in adItemViewNames) {
             runCatching {
-                val clazz = name.clazz ?: return@runCatching
+                val clazz = runCatching { requireClass(key) }.getOrNull()
+                    ?: name.clazz ?: return@runCatching
                 val ctor = clazz.declaredConstructors.firstOrNull {
                     it.parameterTypes.size == 1 && Context::class.java.isAssignableFrom(it.parameterTypes[0])
                 } ?: return@runCatching
@@ -86,7 +92,8 @@ object HideQzoneAd : BaseSwitchHookItem() {
 
     private fun hookRecommendAdGate() {
         runCatching {
-            val ext = AD_FEED_DATA_EXT.clazz ?: return@runCatching
+            val ext = runCatching { requireClass("adFeedDataExt") }.getOrNull()
+                ?: AD_FEED_DATA_EXT.clazz ?: return@runCatching
             val method = ext.declaredMethods.firstOrNull {
                 it.name == "isShowingRecommendAd" && it.parameterCount == 1
             } ?: return@runCatching
@@ -107,4 +114,61 @@ object HideQzoneAd : BaseSwitchHookItem() {
             clazz = clazz.superclass
         }
     }
+
+    override fun getQueryMap(): Map<String, BaseMatcher> = mapOf(
+        "adFeedxBase" to FindClass().apply {
+            searchPackages("com.qzone.reborn.feedx.itemview.ad")
+            matcher {
+                // 基类自身只引用 Kotlin 判空助手串；两者组合在包内唯一（9.3.15 双包验证）
+                usingStrings("getPresenterList(...)", "getActivityFromView(...)")
+            }
+        },
+
+        "adProMediaBase" to FindClass().apply {
+            searchPackages("com.qzone.reborn.feedpro.itemview.ad")
+            matcher {
+                // 广告媒体容器字段名判空串（9.3.15 双包全 dex 验证唯一）
+                usingStrings("mBottomOperateContainer", "mAdContainer")
+            }
+        },
+
+        "adProGeneralBigCard" to FindClass().apply {
+            searchPackages("com.qzone.reborn.feedpro.itemview")
+            matcher {
+                // 类自身的 getLogTag() 常量（9.3.15 双包全 dex 验证唯一）
+                usingStrings("QzoneFeedProGeneralBigCardItemView")
+            }
+        },
+
+        "adProForwardMix" to FindClass().apply {
+            searchPackages("com.qzone.reborn.feedpro.itemview")
+            matcher {
+                usingStrings("QZoneAdFeedProForwardMixPicVideoItemView")
+            }
+        },
+
+        "adProDetailBottom" to FindClass().apply {
+            searchPackages("com.qzone.reborn.feedpro.widget.comment")
+            matcher {
+                // 微信店铺 logo 绑定日志串；姊妹类 QZoneFeedProDetailCommentAdItemView
+                // 共享 exposure 串故弃用，此串唯一（9.3.15 双包验证）
+                usingStrings("bindWxStoreLogo() wxLogoUrl=")
+            }
+        },
+
+        "adRewardFeed" to FindClass().apply {
+            searchPackages("com.qzone.reborn.feedx.itemview.ad")
+            matcher {
+                usingStrings("QZoneAdRewardFeedItemView")
+            }
+        },
+
+        "adFeedDataExt" to FindClass().apply {
+            searchPackages("com.qzone.proxy.feedcomponent.model.gdt")
+            matcher {
+                // GDT 扩展信息解析失败日志串（9.3.15 双包全 dex 验证唯一）
+                usingStrings("[getAdFirstCategory] error, e:")
+            }
+        }
+    )
 }

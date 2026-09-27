@@ -4,18 +4,21 @@ import me.yxp.qfun.BuildConfig
 import me.yxp.qfun.annotation.HookCategory
 import me.yxp.qfun.annotation.HookItemAnnotation
 import me.yxp.qfun.hook.base.BaseSwitchHookItem
+import me.yxp.qfun.utils.dexkit.DexKitTask
 import me.yxp.qfun.utils.hook.hookBefore
 import me.yxp.qfun.utils.hook.returnConstant
 import me.yxp.qfun.utils.log.LogUtils
 import me.yxp.qfun.utils.reflect.clazz
 import me.yxp.qfun.utils.reflect.findMethod
+import org.luckypray.dexkit.query.FindClass
+import org.luckypray.dexkit.query.base.BaseMatcher
 
 @HookItemAnnotation(
     "去除发送图片限制",
     "解除相册一次最多选择/发送20张图片的上限",
     HookCategory.CHAT
 )
-object RemoveSendPicLimit : BaseSwitchHookItem() {
+object RemoveSendPicLimit : BaseSwitchHookItem(), DexKitTask {
 
     // V1()Z 语义（9.3.1.5 反汇编 + QStory 2.6.4 同款实现双重验证）：
     // 返回 (已选数 + r) < q，true = 未达上限、可以继续选。
@@ -26,9 +29,9 @@ object RemoveSendPicLimit : BaseSwitchHookItem() {
     private var armed = false
 
     override fun onHook() {
-        val listener =
-            "com.tencent.qqnt.qbasealbum.base.model.UniversalItemClickListener".clazz
-                ?: return
+        val listener = runCatching { requireClass("universalItemClickListener") }.getOrNull()
+            ?: "com.tencent.qqnt.qbasealbum.base.model.UniversalItemClickListener".clazz
+            ?: return
 
         listener.findMethod {
             paramCount = 5
@@ -56,4 +59,14 @@ object RemoveSendPicLimit : BaseSwitchHookItem() {
             if (BuildConfig.DEBUG) LogUtils.e("PicLimitDiag", it)
         }
     }
+
+    override fun getQueryMap(): Map<String, BaseMatcher> = mapOf(
+        "universalItemClickListener" to FindClass().apply {
+            searchPackages("com.tencent.qqnt.qbasealbum.base.model")
+            matcher {
+                // 点击处理器自己的 MMKV key：全 dex 5 处引用，仅目标类在 base.model 包内（9.3.15 验证）
+                usingStrings("key_show_toast_interval")
+            }
+        }
+    )
 }

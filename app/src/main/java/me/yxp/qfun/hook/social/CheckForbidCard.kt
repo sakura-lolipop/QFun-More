@@ -19,6 +19,7 @@ object CheckForbidCard : BaseSwitchHookItem() {
 
     override fun onHook() {
         val activity = if (HostInfo.isTIM)
+            // DEXKIT-EXEMPT: TIM 专属类，QQ 9.3.15 双包均不存在，无法静态验证锚点唯一性
             "com.tencent.mobileqq.profilecard.activity.TimFriendProfileCardActivity".toClass
         else FriendProfileCardActivity::class.java
 

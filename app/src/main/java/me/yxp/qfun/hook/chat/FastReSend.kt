@@ -8,6 +8,7 @@ import me.yxp.qfun.hook.api.MenuClickListener
 import me.yxp.qfun.hook.api.OnGetRKey
 import me.yxp.qfun.hook.base.BaseSwitchHookItem
 import me.yxp.qfun.plugin.bean.MsgData
+import me.yxp.qfun.utils.dexkit.DexKitTask
 import me.yxp.qfun.utils.hook.hookAfter
 import me.yxp.qfun.utils.net.HttpUtils
 import me.yxp.qfun.utils.qq.HostInfo
@@ -16,6 +17,8 @@ import me.yxp.qfun.utils.qq.QQCurrentEnv
 import me.yxp.qfun.utils.reflect.findMethod
 import me.yxp.qfun.utils.reflect.findMethodOrNull
 import me.yxp.qfun.utils.reflect.toClass
+import org.luckypray.dexkit.query.FindClass
+import org.luckypray.dexkit.query.base.BaseMatcher
 import java.io.File
 import java.lang.reflect.Constructor
 import java.lang.reflect.Method
@@ -25,7 +28,7 @@ import java.lang.reflect.Method
     "撤回自己发出的图文复合消息时自动将消息插入输入框",
     HookCategory.CHAT
 )
-object FastReSend : BaseSwitchHookItem(), MenuClickListener {
+object FastReSend : BaseSwitchHookItem(), MenuClickListener, DexKitTask {
 
     private lateinit var recoverElements: Method
 
@@ -51,7 +54,8 @@ object FastReSend : BaseSwitchHookItem(), MenuClickListener {
     }
 
     override fun onInit(): Boolean {
-        val delegateClass = "com.tencent.mobileqq.aio.input.draft.InputDraftVMDelegate".toClass
+        val delegateClass = runCatching { requireClass("inputDraftVMDelegate") }.getOrNull()
+            ?: "com.tencent.mobileqq.aio.input.draft.InputDraftVMDelegate".toClass
         recoverElements = delegateClass.findMethodOrNull {
             visibility = private
             returnType = void
@@ -89,5 +93,14 @@ object FastReSend : BaseSwitchHookItem(), MenuClickListener {
             recoverElements.invoke(delegate, elements)
         }
     }
+
+    override fun getQueryMap(): Map<String, BaseMatcher> = mapOf(
+        "inputDraftVMDelegate" to FindClass().apply {
+            searchPackages("com.tencent.mobileqq.aio.input.draft")
+            matcher {
+                usingStrings("saveDrafts start editableText?.length = ")
+            }
+        }
+    )
 
 }

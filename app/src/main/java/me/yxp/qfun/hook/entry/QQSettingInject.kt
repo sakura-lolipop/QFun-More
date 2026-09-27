@@ -48,6 +48,8 @@ object QQSettingInject : BaseApiHookItem<Listener>(), DexKitTask {
     override fun loadHook() {
 
         val providerList = mutableListOf<Class<*>?>()
+        // DEXKIT-EXEMPT: 仅 versionCode<12288 旧版 QQ 回退分支；两个类在 9.3.15 包内已不存在，
+        // 锚点无法静态验证，保留稳定名硬编码
         val newProvider = "com.tencent.mobileqq.setting.main.NewSettingConfigProvider".clazz
         val mainProvider = "com.tencent.mobileqq.setting.main.MainSettingConfigProvider".clazz
 
